@@ -1,9 +1,7 @@
 <h1>Contribution<h1>
 <h2>Structure<h2>
 
-client.py --- HTTP ---> api.py --- SQL ---> SQLite Database
-                           |
-                            --- HTTP ---> Open Library
+![ER Diagram](structure.png)  
 
 ![ER Diagram](ER.png)      
 
@@ -58,5 +56,12 @@ client.py --- HTTP ---> api.py --- SQL ---> SQLite Database
 
 <h3>Reviewing process<h3>
 
+* At least one other team member must read the code and approve the pull request before it can be merged.  
+* Reviewers must explicitly state what works well in the code.   
+* Reviewers must ask a relevant question or suggest an improvement.   
+* Simply writing "LGTM" (Looks Good To Me) as the entire review is not permitted.   
+* Reviewers should actively look for real problems or ways to improve the code design to reach a higher assessment level.  
+* The original author of the pull request is responsible for fixing any issues raised in the review comments before executing the merge to the main branch.
+* Every team member must complete a minimum of three code reviews over the course of the project.   
 
 
