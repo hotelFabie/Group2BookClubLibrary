@@ -5,7 +5,7 @@ client.py --- HTTP ---> api.py --- SQL ---> SQLite Database
                            |
                             --- HTTP ---> Open Library
 
-Database Structure
+![ER Diagram](ER.png)      
 
 <h2>Definition of Done:
 
