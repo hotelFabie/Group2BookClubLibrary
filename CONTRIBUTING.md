@@ -46,13 +46,14 @@
 * Comments: Code should explain what is happening. Comments should explain why it is happening. Avoid obvious comments.
 
 <h3>Branch naming convention<h3>
-
+<p >
 * Always branch off main. Name your branches using this format: <type>/<issue-number>-<short-description>.
     * Features: For building a new capability, user story, or API endpoint (e.g., feature/add-book-route).
     * Bug Fixes: For repairing broken code, solving merge conflicts, or patching an unexpected error (e.g.,bugfix/15-fix-database-crash)
     * Documentation: For updates strictly related to documentation, such as your README.md, CONTRIBUTING.md, or daily sprint notes (e.g., docs/update-er-diagram).
     * Refactor: For restructuring or improving existing code without changing its external behavior (e.g., refactor/clean-up-models).
     * Chore: For routine maintenance tasks, like updating requirements.txt or configuring the initial repository setup (e.g., chore/add-dotenv-package).
+</p>
 
 <h3>Reviewing process<h3>
 
