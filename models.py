@@ -1,9 +1,8 @@
-from datetime import datetime
+from datetime import date
 from pydantic import BaseModel
 
-#Books
-class Book(BaseModel):
-    id : int
+# Book Models
+class BookBase(BaseModel):
     title: str
     first_publish_year: int | None = None
     open_library_key: str | None = None
@@ -11,23 +10,50 @@ class Book(BaseModel):
     isbn: str | None = None
     subject: str | None = None
 
-#Authors
-class Author(BaseModel):
-    id : int
-    name : str
-    open_library_key | None = None
-    birth_date : datetime | None = None #Or date
-    death_date : datetime | None = None #Or date
+class BookCreate(BookBase):
+    pass
 
-#Members
-class Member(BaseModel):
- id : int
- name : str
- email : str
- phone : str | None = None
- joined_date : datetime #Or date
+class BookResponse(BookBase):
+    id: int
 
-#Loans
-class Loan(BaseModel):
-    id : int    
-    #
+# Author Models
+class AuthorBase(BaseModel):
+    name: str
+    open_library_key: str | None = None
+    birth_date: date | None = None
+    death_date: date | None = None
+
+class AuthorCreate(AuthorBase):
+    pass
+
+class AuthorResponse(AuthorBase):
+    id: int
+
+# Member Models
+class MemberBase(BaseModel):
+    name: str
+    email: str
+    phone: str | None = None
+    joined_date: date
+
+class MemberCreate(MemberBase):
+    pass
+
+class MemberResponse(MemberBase):
+    id: int
+
+
+# Loan Models
+class LoanBase(BaseModel):
+    book_id: int
+    member_id: int
+    loan_date: date
+    due_date: date
+    returned_date: date | None = None
+
+class LoanCreate(LoanBase):
+    pass
+
+class LoanResponse(LoanBase):
+    id: int
+ 
