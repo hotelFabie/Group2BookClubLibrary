@@ -34,7 +34,6 @@ class MemberBase(BaseModel):
     name: str
     email: EmailStr
     phone: str | None = None
-    joined_date: date
 
 class MemberCreate(MemberBase):
     pass
@@ -53,7 +52,7 @@ class LoanBase(BaseModel):
     member_id: int
     loan_date: date
     due_date: date
-    returned_date: date | None = None
+    return_date: date | None = None
 
 class LoanCreate(LoanBase):
     pass
