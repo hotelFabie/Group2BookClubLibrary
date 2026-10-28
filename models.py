@@ -29,6 +29,12 @@ class AuthorCreate(AuthorBase):
 class AuthorResponse(AuthorBase):
     id: int
 
+class AuthorUpdate(BaseModel):
+    name: str | None = None
+    open_library_key: str | None = None
+    birth_date: date | None = None
+    death_date: date | None = None
+
 # Member Models
 class MemberBase(BaseModel):
     name: str
