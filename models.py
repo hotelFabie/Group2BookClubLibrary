@@ -1,5 +1,5 @@
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 # Book Models
 class BookBase(BaseModel):
@@ -32,7 +32,7 @@ class AuthorResponse(AuthorBase):
 # Member Models
 class MemberBase(BaseModel):
     name: str
-    email: str
+    email: EmailStr
     phone: str | None = None
     joined_date: date
 
@@ -42,6 +42,10 @@ class MemberCreate(MemberBase):
 class MemberResponse(MemberBase):
     id: int
 
+class MemberUpdate(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
 
 # Loan Models
 class LoanBase(BaseModel):
