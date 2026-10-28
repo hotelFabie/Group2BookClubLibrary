@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 import database 
-import datetime
+from datetime import datetime 
 
 app = FastAPI(title="Book Club Library API")
 
@@ -23,7 +23,7 @@ def get_member_loans(member_id : int):
     for loan in raw_loans:
         if loan["return_date"] is not None:
             loan["status"] = "Returned"
-        elif datetime.datetime.strftime(loan["due_date"]) < datetime.datetime.now(): 
+        elif datetime.strptime(loan["due_date"], "%Y-%m-%d") < datetime.now(): 
             loan["status"] = "Overdue"
         else:
             loan["status"] = "Borrowing"
