@@ -99,3 +99,19 @@ def get_member_loans(member_id: int):
         loans.append(loan)
 
     return loans
+
+#We will need to implement the methods within database.py
+
+@app.get("/loans/{loan_id}/return")
+def return_book(loan_id : int): 
+    #This one might already have been done in another issue?
+    loan = database.get_loan(loan_id)
+
+    #Unless the method above has some solution for it:
+    #if loan is
+
+    if loan["return_date"] is not None:
+       #Book has already returned, give an error! BWEEP BWEEP! 
+
+    returned_loan = database.return_loan()
+    return returned_loan
