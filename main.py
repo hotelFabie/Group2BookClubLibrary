@@ -103,15 +103,19 @@ def get_member_loans(member_id: int):
 #We will need to implement the methods within database.py
 
 @app.get("/loans/{loan_id}/return")
-def return_book(loan_id : int): 
-    #This one might already have been done in another issue?
-    loan = database.get_loan(loan_id)
+def return_book(loan_id: int): 
+    #Pre database execution check.
+    #This may not be the correct method name; check with responsible.
+    loan = database.fetch_one_loan(loan_id)
 
     #Unless the method above has some solution for it:
-    #if loan is
+    if loan is None:
+        #Not found.
+        raise HTTPException(status_code=404, detail="Can't return a loan that does not exist.")
 
     if loan["return_date"] is not None:
-       #Book has already returned, give an error! BWEEP BWEEP! 
+        #Conflict.
+        raise HTTPException(status_code=409, detail="Can't return a book that has already been returned.")
 
-    returned_loan = database.return_loan()
+    returned_loan = database.return_loan(loan_id)
     return returned_loan

@@ -97,3 +97,36 @@ def update_member_fields(member_id: int, updates: dict) -> dict | None:
         return dict(row)
     finally:
         conn.close()
+
+import datetime
+
+#Gotta add the return indicator here + add a method.
+def return_book(loan_id: int):
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    try:
+        cursor = conn.cursor()
+
+        #If anything is found. 
+        #WIP: Not sure if this is the correct format?
+        cursor.execute(
+            "UPDATE loans SET return_date = ? WHERE id = ?",
+            (datetime.date.today().isoformat(), loan_id)
+        )
+        if cursor.rowcount == 0:
+            return None 
+
+        conn.commit()
+
+        #Return for external methods using this.
+        cursor.execute(
+            "SELECT * FROM loans WHERE id = ?", (loan_id,)
+        )
+
+        row = cursor.fetchone()
+
+        #WIP: Is this guaranteed to return anything?
+        return dict(row)
+
+    finally:
+        conn.close()
