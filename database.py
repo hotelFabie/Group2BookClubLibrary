@@ -270,3 +270,31 @@ def update_loan_fields(loan_id: int, updates: dict) -> dict | None:
         return dict(row)
     finally:
         conn.close()
+
+def return_loan(loan_id: int) -> dict | None:
+    """Updates the return date to whatever the date is when attempting a return."""
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "UPDATE loans SET return_date = ? WHERE id = ?",
+            (datetime.date.today().isoformat(), loan_id)
+        )
+        if cursor.rowcount == 0:
+            return None 
+
+        conn.commit()
+
+        #Return for external methods using this.
+        cursor.execute(
+            "SELECT * FROM loans WHERE id = ?", (loan_id,)
+        )
+
+        row = cursor.fetchone()
+
+        return dict(row)
+    
+    finally:
+        conn.close()
