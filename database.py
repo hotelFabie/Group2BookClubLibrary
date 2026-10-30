@@ -98,6 +98,94 @@ def update_member_fields(member_id: int, updates: dict) -> dict | None:
     finally:
         conn.close()
 
+
+def fetch_all_loans() -> list[dict]:
+    """Return all loans."""
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            "SELECT id, book_id, member_id, loan_date, due_date, return_date FROM loans"
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def fetch_loan(loan_id: int) -> dict | None:
+    """Return one loan by id, or None if not found."""
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT id, book_id, member_id, loan_date, due_date, return_date "
+            "FROM loans WHERE id = ?",
+            (loan_id,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def has_active_loan_for_book(book_id: int) -> bool:
+    """Return True if the book has an active (not returned) loan."""
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM loans WHERE book_id = ? AND return_date IS NULL LIMIT 1",
+            (book_id,),
+        ).fetchone()
+        return row is not None
+    finally:
+        conn.close()
+
+
+def insert_loan(book_id: int, member_id: int, loan_date: str, due_date: str) -> dict:
+    """Insert a new loan. Raises IntegrityError on bad foreign keys."""
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    try:
+        cursor = conn.execute(
+            "INSERT INTO loans (book_id, member_id, loan_date, due_date) "
+            "VALUES (?, ?, ?, ?)",
+            (book_id, member_id, loan_date, due_date),
+        )
+        conn.commit()
+        new_id = cursor.lastrowid
+        row = conn.execute(
+            "SELECT id, book_id, member_id, loan_date, due_date, return_date "
+            "FROM loans WHERE id = ?",
+            (new_id,),
+        ).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def update_loan_fields(loan_id: int, updates: dict) -> dict | None:
+    """Update given fields on a loan. Returns the row, or None if not found."""
+    columns = ", ".join(f"{key} = ?" for key in updates)
+    values = list(updates.values()) + [loan_id]
+
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    try:
+        cursor = conn.execute(
+            f"UPDATE loans SET {columns} WHERE id = ?",
+            values,
+        )
+        if cursor.rowcount == 0:
+            return None
+        conn.commit()
+        row = conn.execute(
+            "SELECT id, book_id, member_id, loan_date, due_date, return_date "
+            "FROM loans WHERE id = ?",
+            (loan_id,),
+        ).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
 import datetime
 
 #Gotta add the return indicator here + add a method.

@@ -4,34 +4,21 @@ import sqlite3
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, EmailStr
 
 import database
+from models import MemberCreate, MemberUpdate, LoanCreate, LoanUpdate
 
 
 app = FastAPI(title="Book Club Library API")
-
-
-class MemberCreate(BaseModel):
-    """Payload for creating a member."""
-
-    name: str
-    email: EmailStr
-    phone: str | None = None
-
-
-class MemberUpdate(BaseModel):
-    """Payload for partially updating a member. All fields optional."""
-
-    name: str | None = None
-    email: EmailStr | None = None
-    phone: str | None = None
 
 
 @app.get("/")
 def read_root():
     """Health check endpoint."""
     return {"message": "Book Club Library API"}
+
+
+# ---------- Member endpoints ----------
 
 
 @app.get("/members")
@@ -65,7 +52,6 @@ def update_member(member_id: int, member: MemberUpdate):
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    # EmailStr → str för SQLite
     if "email" in updates:
         updates["email"] = str(updates["email"])
 
@@ -99,6 +85,63 @@ def get_member_loans(member_id: int):
         loans.append(loan)
 
     return loans
+
+
+# ---------- Loan endpoints ----------
+
+
+@app.get("/loans")
+def get_loans():
+    """Return all loans."""
+    return database.fetch_all_loans()
+
+
+@app.get("/loans/{loan_id}")
+def get_one_loan(loan_id: int):
+    """Return one loan by id."""
+    loan = database.fetch_loan(loan_id)
+    if loan is None:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    return loan
+
+
+@app.post("/loans", status_code=201)
+def create_loan(loan: LoanCreate):
+    """Create a new loan. Fails if the book is already on an active loan."""
+    if database.has_active_loan_for_book(loan.book_id):
+        raise HTTPException(status_code=409, detail="Book is already on loan")
+
+    try:
+        return database.insert_loan(
+            loan.book_id,
+            loan.member_id,
+            str(loan.loan_date),
+            str(loan.due_date),
+        )
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="Invalid book_id or member_id")
+
+
+@app.patch("/loans/{loan_id}")
+def update_loan(loan_id: int, loan: LoanUpdate):
+    """Partially update a loan. Use to extend due_date or set return_date."""
+    updates = loan.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    for key in ("due_date", "return_date"):
+        if key in updates and updates[key] is not None:
+            updates[key] = str(updates[key])
+
+    try:
+        updated = database.update_loan_fields(loan_id, updates)
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="Invalid loan data")
+
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Loan not found")
+
+    return updated
 
 #We will need to implement the methods within database.py
 

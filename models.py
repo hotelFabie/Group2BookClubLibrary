@@ -1,6 +1,7 @@
 from datetime import date
 from pydantic import BaseModel, EmailStr
 
+
 # Book Models
 class BookBase(BaseModel):
     title: str
@@ -10,11 +11,14 @@ class BookBase(BaseModel):
     isbn: str | None = None
     subject: str | None = None
 
+
 class BookCreate(BookBase):
     pass
 
+
 class BookResponse(BookBase):
     id: int
+
 
 # Author Models
 class AuthorBase(BaseModel):
@@ -23,11 +27,14 @@ class AuthorBase(BaseModel):
     birth_date: date | None = None
     death_date: date | None = None
 
+
 class AuthorCreate(AuthorBase):
     pass
 
+
 class AuthorResponse(AuthorBase):
     id: int
+
 
 # Member Models
 class MemberBase(BaseModel):
@@ -35,16 +42,20 @@ class MemberBase(BaseModel):
     email: EmailStr
     phone: str | None = None
 
+
 class MemberCreate(MemberBase):
     pass
 
+
 class MemberResponse(MemberBase):
     id: int
+
 
 class MemberUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
     phone: str | None = None
+
 
 # Loan Models
 class LoanBase(BaseModel):
@@ -54,9 +65,15 @@ class LoanBase(BaseModel):
     due_date: date
     return_date: date | None = None
 
+
 class LoanCreate(LoanBase):
     pass
 
+
 class LoanResponse(LoanBase):
     id: int
- 
+
+
+class LoanUpdate(BaseModel):
+    due_date: date | None = None
+    return_date: date | None = None
