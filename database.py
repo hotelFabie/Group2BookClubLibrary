@@ -24,7 +24,7 @@ def get_loans_by_member_id(member_id : int) -> list[dict]:
 
     return [dict(row) for row in rows]
 
-def get_book_by_id(book_id : int) -> dict:
+def get_book_by_id(book_id : int) -> dict | None:
     "Find book by id."
     conn = get_connection()
     try:
@@ -80,27 +80,29 @@ def create_book(book : BookCreate) -> dict:
         cursor = conn.cursor()
 
         # Reuse the author if they already exist, otherwise create them
-        cursor.execute("SELECT id FROM authors WHERE name = ?", (book.get("author"),))
+        cursor.execute("SELECT id FROM authors WHERE name = ?", (book.author,))
 
         row = cursor.fetchone()
         if row is None:
             raise AuthorNotFoundError(f"Author '{book.get("author")}' not found!")
         else:
-            author_id = 1
+            author_id = row[0]
         print("-------------A----------") 
 
         ### TODO något fel här nedan. Hitta felet !!! + fixa delete och put också kanske
-        cursor.execute(
-        """
-        INSERT INTO books (title, first_publish_year, open_library_key, cover_id, isbn, subject)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """, ("", 1999, "", 1, "", ""),)
+
         # cursor.execute(
-        #     "INSERT INTO books (title, first_publish_year, open_library_key, "
-        #     "cover_id, isbn, subject) VALUES (?, ?, ?, ?, ?, ?)",
-        #     (book.title, book.first_publish_year, book.open_library_key,
-        #      book.cover_id, book.isbn, book.subject),
-        # )
+        # """
+        # INSERT INTO books (title, first_publish_year, open_library_key, cover_id, isbn, subject)
+        # VALUES (?, ?, ?, ?, ?, ?)
+        # """, ("", 1999, "", 1, "", ""),)
+
+        cursor.execute(
+            "INSERT INTO books (title, first_publish_year, open_library_key, "
+            "cover_id, isbn, subject) VALUES (?, ?, ?, ?, ?, ?)",
+            (book.title, book.first_publish_year, book.open_library_key,
+             book.cover_id, book.isbn, book.subject),
+        )
         print("-------------B----------") 
 
         book_id = cursor.lastrowid
