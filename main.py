@@ -143,21 +143,18 @@ def update_loan(loan_id: int, loan: LoanUpdate):
 
     return updated
 
-#We will need to implement the methods within database.py
 
 @app.get("/loans/{loan_id}/return")
 def return_book(loan_id: int): 
-    #Pre database execution check.
-    #This may not be the correct method name; check with responsible.
-    loan = database.fetch_one_loan(loan_id)
+    """Marks a book as returned, unless it already is returned."""
+    loan = database.fetch_loan(loan_id)
 
-    #Unless the method above has some solution for it:
+    #Not found.
     if loan is None:
-        #Not found.
         raise HTTPException(status_code=404, detail="Can't return a loan that does not exist.")
-
-    if loan["return_date"] is not None:
-        #Conflict.
+    
+    #Conflict.
+    if loan["return_date"] is not None:    
         raise HTTPException(status_code=409, detail="Can't return a book that has already been returned.")
 
     returned_loan = database.return_loan(loan_id)

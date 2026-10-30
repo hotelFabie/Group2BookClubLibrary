@@ -1,6 +1,6 @@
 from pathlib import Path
 import sqlite3
-
+import datetime
 
 def get_connection():
     DB_PATH = Path(__file__).parent / "library.db"
@@ -186,17 +186,15 @@ def update_loan_fields(loan_id: int, updates: dict) -> dict | None:
     finally:
         conn.close()
 
-import datetime
+#WIP:
+#def borrow_book()
 
-#Gotta add the return indicator here + add a method.
-def return_book(loan_id: int):
+def return_book(loan_id: int) -> dict | None:
     conn = get_connection()
     conn.row_factory = sqlite3.Row
     try:
         cursor = conn.cursor()
 
-        #If anything is found. 
-        #WIP: Not sure if this is the correct format?
         cursor.execute(
             "UPDATE loans SET return_date = ? WHERE id = ?",
             (datetime.date.today().isoformat(), loan_id)
@@ -213,8 +211,7 @@ def return_book(loan_id: int):
 
         row = cursor.fetchone()
 
-        #WIP: Is this guaranteed to return anything?
         return dict(row)
-
+    
     finally:
         conn.close()
