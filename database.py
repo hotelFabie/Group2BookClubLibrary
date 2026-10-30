@@ -186,10 +186,8 @@ def update_loan_fields(loan_id: int, updates: dict) -> dict | None:
     finally:
         conn.close()
 
-#WIP:
-#def borrow_book()
-
-def return_book(loan_id: int) -> dict | None:
+def return_loan(loan_id: int) -> dict | None:
+    """Updates the return date to whatever the date is when attempting a return."""
     conn = get_connection()
     conn.row_factory = sqlite3.Row
     try:

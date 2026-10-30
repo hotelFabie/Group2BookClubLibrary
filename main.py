@@ -144,7 +144,7 @@ def update_loan(loan_id: int, loan: LoanUpdate):
     return updated
 
 
-@app.get("/loans/{loan_id}/return")
+@app.post("/loans/{loan_id}/return")
 def return_book(loan_id: int): 
     """Marks a book as returned, unless it already is returned."""
     loan = database.fetch_loan(loan_id)
