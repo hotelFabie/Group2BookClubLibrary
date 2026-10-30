@@ -11,7 +11,7 @@ class BookBase(BaseModel):
     subject: str | None = None
 
 class BookCreate(BookBase):
-    pass
+    author : str | None = None
 
 class BookResponse(BookBase):
     id: int
