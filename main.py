@@ -238,15 +238,13 @@ def patch_book(book_id: int, book_update: models.BookUpdate):
 
     return updated_book
 
-@app.delete("books/{book_id}", response_model=models.BookResponse)
+@app.delete("/books/{book_id}", response_model=models.BookResponse)
 def delete_book(book_id: int):
     try:
-        database.delete_book(book_id)
-    except database.BookNotFoundError as e: # Assuming you have this custom exception
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete the book from the database."
-        )
+        deleted = database.delete_book(book_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Book not found")
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Database execution failed")
+    
     return
