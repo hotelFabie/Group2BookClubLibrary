@@ -72,53 +72,41 @@ def get_books(author : str | None = None):
     finally:
         conn.close()
 
-def create_book(book : BookCreate) -> dict:
-    "Adds a new book and links it to its author."
-    
+def create_book(book: BookCreate) -> dict:
+    "Adds a new book and links it to an existing author."
+
     conn = get_connection()
     try:
         cursor = conn.cursor()
 
-        # Reuse the author if they already exist, otherwise create them
         cursor.execute("SELECT id FROM authors WHERE name = ?", (book.author,))
-
         row = cursor.fetchone()
         if row is None:
-            raise AuthorNotFoundError(f"Author '{book.get("author")}' not found!")
-        else:
-            author_id = row[0]
-        print("-------------A----------") 
+            raise AuthorNotFoundError(f"Author '{book.author}' not found! You need to create the author first!")
+        author_id = row[0]
 
-        ### TODO något fel här nedan. Hitta felet !!! + fixa delete och put också kanske
-
-        # cursor.execute(
-        # """
-        # INSERT INTO books (title, first_publish_year, open_library_key, cover_id, isbn, subject)
-        # VALUES (?, ?, ?, ?, ?, ?)
-        # """, ("", 1999, "", 1, "", ""),)
-
-        cursor.execute(
+        try:
+            cursor.execute(
             "INSERT INTO books (title, first_publish_year, open_library_key, "
             "cover_id, isbn, subject) VALUES (?, ?, ?, ?, ?, ?)",
             (book.title, book.first_publish_year, book.open_library_key,
-             book.cover_id, book.isbn, book.subject),
-        )
-        print("-------------B----------") 
-
+             book.cover_id, book.isbn, book.subject,)
+            )
+        except sqlite3.Error as e:
+            print("INSERT failed:", type(e).__name__, e)
+            raise
         book_id = cursor.lastrowid
 
         cursor.execute(
             "INSERT INTO book_authors (book_id, author_id) VALUES (?, ?)",
             (book_id, author_id),
         )
-        print("------------C----------") 
 
         conn.commit()
     except Exception:
         conn.rollback()
-        raise 
+        raise
     finally:
         conn.close()
 
     return get_book_by_id(book_id)
-

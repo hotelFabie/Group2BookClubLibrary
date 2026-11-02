@@ -2,7 +2,7 @@
 
 import database 
 from datetime import datetime 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, logger, status
 
 from models import BookCreate
 
@@ -75,7 +75,6 @@ def get_book(book_id: int):
 # TODO fixa post och delete för books
 # Fixa också put i mån av tid 
 
-
 @app.post("/books", status_code=status.HTTP_201_CREATED)
 def create_book(book: BookCreate):
     """Endpoint for adding a new book to the Library."""
@@ -85,28 +84,15 @@ def create_book(book: BookCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Title and author are required!",
         )
-    
-    new_book : BookCreate = {}
 
-    if book.title:
-        new_book["title"] = book.title
-    if book.first_publish_year:
-        new_book["first_publish_year"] = book.first_publish_year
-    if book.open_library_key:
-        new_book["open_library_key"] = book.open_library_key
-    if book.open_library_key:
-        new_book["isbn"] = book.isbn
-    if book.cover_id:
-        new_book["cover_id"] = book.cover_id
-    if book.author:
-        new_book["author"] = book.author
-    
-    try:    
-        created_book = database.create_book(new_book)
+    try:
+        created_book = database.create_book(book)
     except database.AuthorNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Couldn't save to database!")
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Couldn't save to database!",
+        )
 
     return created_book
-
