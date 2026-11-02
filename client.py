@@ -48,8 +48,23 @@ def loans_menu():
 
     if choice == "0":
         return
-    if choice == "1":
+    elif choice == "1":
         list_all_loans()
+    elif choice == "2":
+        list_member_loans()
+
+
+def list_member_loans():
+    member_id = input("Member id: ").strip()
+    response = requests.get(f"{API_BASE_URL}/members/{member_id}/loans")
+    response.raise_for_status()
+    loans = response.json()
+
+    if not loans:
+        print("No loans found for this member.")
+        return
+
+    print(json.dumps(loans, indent=2))
 
 
 def authors_menu():
