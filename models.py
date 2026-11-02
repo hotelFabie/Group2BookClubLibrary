@@ -1,6 +1,7 @@
 from datetime import date
 from pydantic import BaseModel, EmailStr
 
+
 # Book Models
 class BookBase(BaseModel):
     title: str
@@ -10,11 +11,22 @@ class BookBase(BaseModel):
     isbn: str | None = None
     subject: str | None = None
 
+
 class BookCreate(BookBase):
     author : str | None = None
 
+
 class BookResponse(BookBase):
     id: int
+
+class BookUpdate(BaseModel):
+    title: str | None = None
+    first_publish_year: int | None = None
+    open_library_key: str | None = None
+    cover_id: int | None = None
+    isbn: str | None = None
+    subject: str | None = None
+
 
 # Author Models
 class AuthorBase(BaseModel):
@@ -23,11 +35,19 @@ class AuthorBase(BaseModel):
     birth_date: date | None = None
     death_date: date | None = None
 
+
 class AuthorCreate(AuthorBase):
     pass
 
+
 class AuthorResponse(AuthorBase):
     id: int
+
+class AuthorUpdate(BaseModel):
+    name: str | None = None
+    open_library_key: str | None = None
+    birth_date: date | None = None
+    death_date: date | None = None
 
 # Member Models
 class MemberBase(BaseModel):
@@ -35,16 +55,20 @@ class MemberBase(BaseModel):
     email: EmailStr
     phone: str | None = None
 
+
 class MemberCreate(MemberBase):
     pass
 
+
 class MemberResponse(MemberBase):
     id: int
+
 
 class MemberUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
     phone: str | None = None
+
 
 # Loan Models
 class LoanBase(BaseModel):
@@ -54,9 +78,15 @@ class LoanBase(BaseModel):
     due_date: date
     return_date: date | None = None
 
+
 class LoanCreate(LoanBase):
     pass
 
+
 class LoanResponse(LoanBase):
     id: int
- 
+
+
+class LoanUpdate(BaseModel):
+    due_date: date | None = None
+    return_date: date | None = None
