@@ -31,7 +31,16 @@ def members_menu():
 
 
 def loans_menu():
-    pass
+    print("\n--- Loans ---")
+    print("1. List all loans")
+    print("2. List loans for a member")
+    print("3. Extend a loan")
+    print("0. Back to main menu")
+
+    choice = input("Choose an option: ").strip()
+
+    if choice == "0":
+        return
 
 
 def authors_menu():
