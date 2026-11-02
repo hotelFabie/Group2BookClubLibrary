@@ -52,6 +52,7 @@ def get_book_by_id(book_id : int) -> dict | None:
                         "= b.id JOIN authors a ON a.id = ba.author_id WHERE b.id = ? "
                         "GROUP BY b.id", (book_id,),)
         row = cursor.fetchone()
+        return dict(row) if row else None
     finally:
         conn.close()
 
@@ -182,7 +183,7 @@ def get_books(author : str | None = None):
     finally:
         conn.close()
 
-def create_book(book: BookCreate) -> dict:
+def create_book(book: BookCreate) -> BookCreate:
     "Adds a new book and links it to an existing author."
 
     conn = get_connection()
