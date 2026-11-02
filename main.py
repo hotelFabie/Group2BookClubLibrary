@@ -191,3 +191,20 @@ def update_loan(loan_id: int, loan: LoanUpdate):
         raise HTTPException(status_code=404, detail="Loan not found")
 
     return updated
+
+
+@app.post("/loans/{loan_id}/return")
+def return_book(loan_id: int): 
+    """Marks a book as returned, unless it already is returned."""
+    loan = database.fetch_loan(loan_id)
+
+    #Not found.
+    if loan is None:
+        raise HTTPException(status_code=404, detail="Can't return a loan that does not exist.")
+    
+    #Conflict.
+    if loan["return_date"] is not None:    
+        raise HTTPException(status_code=409, detail="Can't return a book that has already been returned.")
+
+    returned_loan = database.return_loan(loan_id)
+    return returned_loan
