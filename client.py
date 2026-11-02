@@ -1,5 +1,5 @@
+import json
 import os
-import sys
 import requests
 from dotenv import load_dotenv
 
@@ -30,6 +30,13 @@ def members_menu():
     pass
 
 
+def list_all_loans():
+    response = requests.get(f"{API_BASE_URL}/loans")
+    response.raise_for_status()
+    loans = response.json()
+    print(json.dumps(loans, indent=2))
+
+
 def loans_menu():
     print("\n--- Loans ---")
     print("1. List all loans")
@@ -41,6 +48,8 @@ def loans_menu():
 
     if choice == "0":
         return
+    if choice == "1":
+        list_all_loans()
 
 
 def authors_menu():
@@ -52,7 +61,6 @@ def filter_by_author():
 
 
 def main():
-    """Show the menu and read one choice."""
     print("\n--- Book Club Library ---")
     print("1. Books")
     print("2. Members")
@@ -64,6 +72,8 @@ def main():
 
     if choice == "0":
         return
+    if choice == "3":
+        loans_menu()
 
 
 if __name__ == "__main__":
