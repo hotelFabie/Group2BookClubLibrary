@@ -81,7 +81,7 @@ def insert_author(
         conn.close()
 
 def update_author(author_id: int, update_data: dict) -> dict | None:
-    """Dynamically updates an author and returns the modified record."""   
+    """Updates the given fields on an author. Returns the updated row, or None."""
     if not update_data:
         return None
 
@@ -114,8 +114,6 @@ def update_author(author_id: int, update_data: dict) -> dict | None:
         row = cursor.fetchone()
         return dict(row) if row else None
         
-    except sqlite3.IntegrityError:
-        return None
     finally:
         conn.close()
 
@@ -296,5 +294,41 @@ def return_loan(loan_id: int) -> dict | None:
 
         return dict(row)
     
+    finally:
+        conn.close()
+
+def update_book(book_id: int, update_data: dict) -> dict | None:
+    """Updates the give fields on a book. Returns the updated row, or None."""
+    if not update_data:
+        return None
+
+    set_clauses = [f"{key} = ?" for key in update_data.keys()]
+    set_clause_str = ", ".join(set_clauses)
+    
+    # Append the book_id to the end of the values list for the WHERE clause
+    values = list(update_data.values())
+    values.append(book_id)
+
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"UPDATE books SET {set_clause_str} WHERE id = ?",
+            tuple(values)
+        )
+                
+        # If no rows were changed, the ID doesn't exist
+        if cursor.rowcount == 0:
+            return None
+                    
+        conn.commit()
+                
+        # Fetch and return the finalized record
+        cursor.execute("SELECT * FROM books WHERE id = ?", (book_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+        
     finally:
         conn.close()
