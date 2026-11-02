@@ -215,9 +215,4 @@ import external_api
 @app.get("/get/search")
 def search_open_library(isbn: str):
     search_result = external_api.search_books(isbn) 
-
-    if search_result is None:
-        #Either that we give an error here, or that we just return
-        pass
-
     return search_result
