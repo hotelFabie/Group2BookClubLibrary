@@ -19,6 +19,14 @@ class BookCreate(BookBase):
 class BookResponse(BookBase):
     id: int
 
+class BookUpdate(BaseModel):
+    title: str | None = None
+    first_publish_year: int | None = None
+    open_library_key: str | None = None
+    cover_id: int | None = None
+    isbn: str | None = None
+    subject: str | None = None
+
 
 # Author Models
 class AuthorBase(BaseModel):

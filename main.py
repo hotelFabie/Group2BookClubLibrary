@@ -46,9 +46,10 @@ def patch_author(author_id: int, author_update: models.AuthorUpdate):
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid fields provided for update")
-        
-    updated_author = database.update_author(author_id, update_data)
-    
+    try:    
+        updated_author = database.update_author(author_id, update_data)
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="Database constraint failed: Author data already exists")
     if updated_author is None:
         raise HTTPException(status_code=404, detail="Author not found or constraint failed")
         
@@ -192,7 +193,6 @@ def update_loan(loan_id: int, loan: LoanUpdate):
 
     return updated
 
-
 @app.post("/loans/{loan_id}/return")
 def return_book(loan_id: int): 
     """Marks a book as returned, unless it already is returned."""
@@ -208,3 +208,26 @@ def return_book(loan_id: int):
 
     returned_loan = database.return_loan(loan_id)
     return returned_loan
+
+
+# ---------- Book endpoints ----------
+
+
+@app.patch("/books/{book_id}", response_model=models.BookResponse)
+def patch_book(book_id: int, book_update: models.BookUpdate):
+    """Partially update a book (PATCH)."""
+    # exclude_unset=True guarantees we only update fields the client actually provided
+    update_data = book_update.model_dump(exclude_unset=True)
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields provided for update")
+    try:
+        updated_book = database.update_book(book_id, update_data)
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="Database constraint failed: Book data already exists")
+
+    if updated_book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    return updated_book
+
