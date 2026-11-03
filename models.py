@@ -13,7 +13,7 @@ class BookBase(BaseModel):
 
 
 class BookCreate(BookBase):
-    author : str | None = None
+    pass
 
 
 class BookResponse(BookBase):
