@@ -1,6 +1,8 @@
 """Book Club Library API."""
 
-from fastapi import FastAPI, HTTPException
+
+from fastapi import Body, FastAPI, HTTPException, status
+from models import BookCreate
 import database 
 import models
 import sqlite3
@@ -9,7 +11,6 @@ from models import MemberCreate, MemberUpdate, LoanCreate, LoanUpdate
 
 
 app = FastAPI(title="Book Club Library API")
-
 
 @app.get("/")
 def read_root():
@@ -220,6 +221,82 @@ def search_open_library(isbn: str):
 # ---------- Book endpoints ----------
 
 
+def find_book(book_id: int):
+    """ Finds a book by id. """
+    
+    book = database.get_book_by_id(book_id)
+
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+
+    return book
+
+@app.get("/books")
+def get_books(author: str | None = None):
+    """Endpoint for reading all the books in the Library. Query parameter: 'author'"""
+    if author is not None:
+        author = author.strip()
+        if not author or not author[0].isalpha():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Author must be the name of the author!",
+            )
+        
+    books = database.get_books(author)
+
+    if not books:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No books found!")
+    
+    return books
+
+@app.get("/books/{book_id}")
+def get_book(book_id: int):
+    """Endpoint for reading a book by id"""
+
+    return find_book(book_id)
+
+@app.post("/books", status_code=status.HTTP_201_CREATED)
+def create_book(book: BookCreate, author_ids: list[int]= Body(..., description="List of author IDs to link to this book")):
+    """Endpoint for adding a new book to the Library."""
+
+    if not book.title.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Title and author are required!",
+        )
+
+    if not author_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one author ID must be provided!",
+        )
+
+    book_data = book.model_dump()
+
+    try:
+        created_book = database.create_book(book_data, author_ids)
+    except sqlite3.IntegrityError:
+        # Triggers if the book ISBN already exists, or if an author_id doesn't exist
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Database constraint failed: Book already exists or author ID is invalid."
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Couldn't save to database!",
+        )
+
+    if not created_book:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve created book."
+        )
+
+    return created_book
+
 @app.patch("/books/{book_id}", response_model=models.BookResponse)
 def patch_book(book_id: int, book_update: models.BookUpdate):
     """Partially update a book (PATCH)."""
@@ -238,3 +315,13 @@ def patch_book(book_id: int, book_update: models.BookUpdate):
 
     return updated_book
 
+@app.delete("/books/{book_id}", response_model=models.BookResponse)
+def delete_book(book_id: int):
+    try:
+        deleted = database.delete_book(book_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Book not found")
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Database execution failed")
+    
+    return
