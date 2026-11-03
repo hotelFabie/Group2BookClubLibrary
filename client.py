@@ -68,9 +68,7 @@ def authors_menu():
         add_new_author()
     elif user_choice == "3":
         update_existing_author()
-    elif user_choice == "4":
-        delete_author()
-
+        
 def list_all_authors():
     """Fetch and display all authors from the API."""
     try:
