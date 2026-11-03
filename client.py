@@ -40,10 +40,12 @@ def books_menu():
         elif choice == "2":
             find_books_by_author()
         elif choice == "3":
-            add_book()
+            add_book_manual()
         elif choice == "4":
-            update_book()
+            add_book_external()
         elif choice == "5":
+            update_book()
+        elif choice == "6":
             delete_book()
         elif choice == "0":
             break
@@ -83,7 +85,7 @@ def find_books_by_author():
         print(f"Failed to find books by author: {e}")
 
 
-def add_book():
+def add_book_manual():
     """Collect data and send a POST request to create a book."""
     title = input("Enter book title: ").strip()
     
@@ -125,6 +127,64 @@ def add_book():
         print("Book and authors linked successfully!")
     except requests.exceptions.RequestException as e:
         print(f"Failed to add book: {e}")
+
+def add_book_external():
+
+    """Ask for an ISBN, fetch from the backend, and display the result."""
+    isbn = input("Enter the ISBN to search Open Library: ").strip()
+    
+    if not isbn:
+        print("ISBN is required.")
+        return
+
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/books/get/search", 
+            params={"isbn": isbn}, 
+            timeout=10
+        )
+        
+        if response.status_code == 404:
+            print("Book not found on Open Library.")
+            return
+        elif response.status_code != 200:
+            print(f"Backend returned an error: {response.status_code}")
+            return
+            
+        book_data = response.json()
+        
+        docs = book_data.get("docs", [])
+        if not docs:
+            print("No matching books found in the external data.")
+            return
+            
+        book = docs[0]
+        title = book.get("title", "Unknown Title")
+        authors = ", ".join(book.get("author_name", ["Unknown Author"]))
+        
+        print(f"\nFound: '{title}' by {authors}")
+        
+        confirm = input("\nWould you like to import this book into the library? (y/n): ").strip().lower()
+        
+        if confirm != 'y':
+            print("Import cancelled.")
+            return
+
+        try:
+            # Send the specific Open Library document dictionary to the database
+            import_response = requests.post(
+                f"{API_BASE_URL}/books/import", 
+                json=book, 
+                timeout=5
+            )
+            import_response.raise_for_status()
+            print("Book and authors successfully imported into the database!")
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to import the book: {e}")
+
+    except requests.exceptions.RequestException as e:
+        print(f"Could not connect to the local backend: {e}")
 
 def update_book():
     book_title = input("Enter the title of the book to update: ").strip()

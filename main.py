@@ -257,6 +257,46 @@ def get_book(book_id: int):
 
     return find_book(book_id)
 
+@app.post("/books/import", status_code=status.HTTP_201_CREATED)
+def import_external_book(external_data: dict):
+    """Processes raw JSON from Open Library and saves it to the database."""
+    
+    author_ids = []
+    
+    # 1. Extract external authors and resolve to internal IDs
+    for ext_author in external_data.get("authors", []):
+        # Open Library often formats author data as {"author": {"key": "/authors/OL12345A"}}
+        author_node = ext_author.get("author", {})
+        raw_key = author_node.get("key", "").split("/")[-1]
+        name = ext_author.get("name", "Unknown Author") # May require a separate API call to fetch name if only key is provided
+        
+        # Triggers your get-or-create logic using the unique key
+        author_record = database.insert_author(
+            name=name, 
+            open_library_key=raw_key,
+            birth_date=None,
+            death_date=None
+        )
+        if author_record:
+            author_ids.append(author_record["id"])
+
+    if not author_ids:
+        raise HTTPException(status_code=400, detail="Could not resolve any authors from external payload.")
+
+    # 2. Extract book details and map them to your internal schema
+    book_data = {
+        "title": external_data.get("title"),
+        "isbn": external_data.get("isbn_13", [None])[0]
+    }
+    
+    created_book = database.create_book(book_data, author_ids)
+    
+    if not created_book:
+        raise HTTPException(status_code=500, detail="Database insertion failed.")
+        
+    return created_book
+
+
 @app.post("/books", status_code=status.HTTP_201_CREATED)
 def create_book(book: BookCreate, author_ids: list[int]= Body(..., description="List of author IDs to link to this book")):
     """Endpoint for adding a new book to the Library."""
