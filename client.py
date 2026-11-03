@@ -27,6 +27,41 @@ def books_menu():
 
 
 def members_menu():
+    while True:
+        print("\n--- Members ---")
+        print("1. List all members")
+        print("2. Get one member")
+        print("3. Create a new member")
+        print("4. Update a member")
+        print("0. Back to main menu")
+
+        choice = input("Choose an option: ").strip()
+
+        if choice == "0":
+            return
+        elif choice == "1":
+            list_all_members()
+        elif choice == "2":
+            get_one_member()
+        elif choice == "3":
+            create_member()
+        elif choice == "4":
+            update_member()
+
+
+def list_all_members():
+    pass
+
+
+def get_one_member():
+    pass
+
+
+def create_member():
+    pass
+
+
+def update_member():
     pass
 
 
