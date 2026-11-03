@@ -77,9 +77,29 @@ def insert_author(
      
     conn = get_connection()
     conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    
         
     try:
+        cursor = conn.cursor()
+
+        if open_library_key is not None:
+            cursor.execute(
+                "SELECT * FROM authors WHERE open_library_key = ?", 
+                (open_library_key,)
+            )
+            existing = cursor.fetchone()
+            if existing:
+                return dict(existing)
+
+        cursor.execute(
+            "SELECT * FROM authors WHERE name = ? AND birth_date IS ?", 
+            (name, birth_date)
+        )
+        existing = cursor.fetchone()
+        
+        if existing:
+            return dict(existing)
+           
         cursor.execute(
             """
             INSERT INTO authors (name, open_library_key, birth_date, death_date) 
@@ -183,44 +203,39 @@ def get_books(author : str | None = None):
     finally:
         conn.close()
 
-def create_book(book: BookCreate) -> BookCreate:
+def create_book(book_data: dict, author_ids: list[int]) -> dict | None:
     "Adds a new book and links it to an existing author."
 
     conn = get_connection()
+    conn.row_factory = sqlite3.Row
+
     try:
         cursor = conn.cursor()
-
-        cursor.execute("SELECT id FROM authors WHERE name = ?", (book.author,))
-        row = cursor.fetchone()
-        if row is None:
-            raise AuthorNotFoundError(f"Author '{book.author}' not found! You need to create the author first!")
-        author_id = row[0]
-
-        try:
-            cursor.execute(
-            "INSERT INTO books (title, first_publish_year, open_library_key, "
-            "cover_id, isbn, subject) VALUES (?, ?, ?, ?, ?, ?)",
-            (book.title, book.first_publish_year, book.open_library_key,
-             book.cover_id, book.isbn, book.subject,)
-            )
-        except sqlite3.Error as e:
-            print("INSERT failed:", type(e).__name__, e)
-            raise
+        cursor.execute(
+        "INSERT INTO books (title, first_publish_year, open_library_key, "
+        "cover_id, isbn, subject) VALUES (?, ?, ?, ?, ?, ?)",
+        (book_data["title"], book_data["first_publish_year"], book_data["open_library_key"],
+        book_data["cover_id"], book_data["isbn"], book_data["subject"],)
+        )     
         book_id = cursor.lastrowid
 
-        cursor.execute(
-            "INSERT INTO book_authors (book_id, author_id) VALUES (?, ?)",
-            (book_id, author_id),
-        )
+        for author_id in author_ids:
+            cursor.execute(
+                "INSERT INTO BookAuthor (book_id, author_id) VALUES (?, ?)",
+                (book_id, author_id)
+            )
 
         conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+
+        cursor.execute("SELECT * FROM books WHERE id = ?", (book_id,))
+        return dict(cursor.fetchone())
+    
+    except sqlite3.Error as e:
+        conn.rollback() # Revert the book creation if junction inserts fail
+        print(f"Database error: {e}")
+        return None
     finally:
         conn.close()
-
-    return get_book_by_id(book_id)
 
 def insert_member(name: str, email: str, phone: str | None) -> dict:
     """Insert a new member and return the created row as a dict.

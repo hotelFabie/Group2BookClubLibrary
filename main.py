@@ -1,7 +1,7 @@
 """Book Club Library API."""
 
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import Body, FastAPI, HTTPException, status
 from models import BookCreate
 import database 
 import models
@@ -240,7 +240,7 @@ def get_books(author: str | None = None):
     if not books:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            datail="No books found!")
+            detail="No books found!")
     
     return books
 
@@ -251,23 +251,41 @@ def get_book(book_id: int):
     return find_book(book_id)
 
 @app.post("/books", status_code=status.HTTP_201_CREATED)
-def create_book(book: BookCreate):
+def create_book(book: BookCreate, author_ids: list[int]= Body(..., description="List of author IDs to link to this book")):
     """Endpoint for adding a new book to the Library."""
 
-    if not book.title.strip() or not book.author.strip():
+    if not book.title.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Title and author are required!",
         )
 
+    if not author_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one author ID must be provided!",
+        )
+
+    book_data = book.model_dump()
+
     try:
-        created_book = database.create_book(book)
-    except database.AuthorNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        created_book = database.create_book(book_data, author_ids)
+    except sqlite3.IntegrityError:
+        # Triggers if the book ISBN already exists, or if an author_id doesn't exist
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Database constraint failed: Book already exists or author ID is invalid."
+        )
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Couldn't save to database!",
+        )
+
+    if not created_book:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve created book."
         )
 
     return created_book
