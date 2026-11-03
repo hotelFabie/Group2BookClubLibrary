@@ -438,3 +438,16 @@ def update_book(book_id: int, update_data: dict) -> dict | None:
         
     finally:
         conn.close()
+
+    def delete_book(book_id: int) -> bool:
+        """Deletes a book by id. Returns True if deleted, False if not found."""
+        conn = get_connection()
+        try:
+            cursor = conn.execute(
+                "DELETE FROM books WHERE id = ?",
+                (book_id,),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()    

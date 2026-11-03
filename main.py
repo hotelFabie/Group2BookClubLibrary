@@ -210,6 +210,13 @@ def return_book(loan_id: int):
     returned_loan = database.return_loan(loan_id)
     return returned_loan
 
+# ---------- Book endpoint talking with external API ----------
+import external_api
+
+@app.get("/get/search")
+def search_open_library(isbn: str):
+    search_result = external_api.search_books(isbn) 
+    return search_result
 
 # ---------- Book endpoints ----------
 
@@ -308,3 +315,13 @@ def patch_book(book_id: int, book_update: models.BookUpdate):
 
     return updated_book
 
+@app.delete("/books/{book_id}", response_model=models.BookResponse)
+def delete_book(book_id: int):
+    try:
+        deleted = database.delete_book(book_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Book not found")
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Database execution failed")
+    
+    return
