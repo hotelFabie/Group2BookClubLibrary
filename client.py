@@ -21,6 +21,23 @@ def check_api_is_up() -> bool:
     except requests.exceptions.Timeout:
         return False
 
+def get_json(url, params=None, headers=None, timeout=5):
+    try:
+        response = requests.get(url, params=params, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.Timeout:
+        print("The request took too long")
+    except requests.exceptions.ConnectionError:
+        print("Could not connect to the server")
+    except requests.exceptions.HTTPError as error:
+        print(f"The server said no: {error.response.status_code}")
+    except requests.exceptions.JSONDecodeError:
+        print("The answer was not JSON")
+    except requests.exceptions.RequestException as error:
+        print(f"Someting else went wrong: {type(error).__name__}")
+    return None
+
 
 def books_menu():
     pass
@@ -33,10 +50,95 @@ def members_menu():
 def loans_menu():
     pass
 
+# ----------- Authors menu section ----------------
 
 def authors_menu():
-    pass
+    """Generate authors menu"""
 
+    print("\n--- Authors Menu ---")
+    print("1. List all authors")
+    print("2. Add a new author")
+    print("3. Update an existing author")
+
+    user_choice = input("Choose an option: ").strip()
+
+    if user_choice == "1":
+        list_all_authors()
+    elif user_choice == "2":
+        add_new_author()
+    elif user_choice == "3":
+        update_existing_author()
+    elif user_choice == "4":
+        delete_author()
+
+def list_all_authors():
+    """Fetch and display all authors from the API."""
+    try:
+        authors = get_json(f"{API_BASE_URL}/authors", timeout=5)
+        
+        if not authors:
+            print("No authors found.")
+            return
+        
+        print("\n--- List of Authors ---")
+        for author in authors:
+            print(f"ID: {author['id']}, Name: {author['name']}, Birth Date: {author.get('birth_date')}, Death Date: {author.get('death_date')}")
+    
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching authors: {e}")
+
+def add_new_author():
+    """Add a new author to the API."""
+    name = input("Enter the author's name: ").strip()
+    birth_date = input("Enter the author's birth date (YYYY-MM-DD): ").strip()
+    death_date = input("Enter the author's death date (YYYY-MM-DD, optional): ").strip()
+
+    if not name:
+        print("Author name is required.")
+        return
+
+    data = {
+        "name": name,
+        "birth_date": birth_date if birth_date else None,
+        "death_date": death_date if death_date else None
+    }
+
+    try:
+        response = requests.post(f"{API_BASE_URL}/authors", json=data, timeout=5)
+        response.raise_for_status()
+        print("Author added successfully.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error adding author: {e}")
+
+def update_existing_author():
+    """Update an existing author in the API."""
+    author_id = input("Enter the ID of the author to update: ").strip()
+    name = input("Enter the new name (leave blank to keep current): ").strip()
+    birth_date = input("Enter the new birth date (YYYY-MM-DD, leave blank to keep current): ").strip()
+    death_date = input("Enter the new death date (YYYY-MM-DD, leave blank to keep current): ").strip()
+
+    if not author_id.isdigit():
+        print("Invalid author ID.")
+        return
+
+    data = {}
+    if name:
+        data["name"] = name
+    if birth_date:
+        data["birth_date"] = birth_date
+    if death_date:
+        data["death_date"] = death_date
+
+    if not data:
+        print("No updates provided.")
+        return
+
+    try:
+        response = requests.patch(f"{API_BASE_URL}/authors/{author_id}", json=data, timeout=5)
+        response.raise_for_status()
+        print("Author updated successfully.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error updating author: {e}")
 
 def filter_by_author():
     pass
@@ -55,6 +157,14 @@ def main():
 
     if choice == "0":
         return
+    elif choice == "1":
+        books_menu()
+    elif choice == "2":
+        members_menu()
+    elif choice == "3":
+        loans_menu()
+    elif choice == "4":
+        authors_menu()
 
 
 if __name__ == "__main__":
