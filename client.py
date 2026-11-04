@@ -204,7 +204,7 @@ def add_book_external():
             
         except requests.exceptions.HTTPError as e:
             print(f"Failed to import the book: {e}")
-            print(f"Validation details: {e.response.text}")
+            #print(f"Validation details: {e.response.text}")
     except requests.exceptions.RequestException as e:
         print(f"Network error: {e}")
 
@@ -223,7 +223,8 @@ def update_book():
         print(f"Error fetching books: {e}")
         return
     matches = [b for b in all_books if b["title"].lower() == book_title.lower()]
-    print(matches)
+    for book in matches:
+        print(f"Title: {book.get('title')} | ISBN: {book.get('isbn')}")
     if not matches:
         print("No book found with that title.")
         return
