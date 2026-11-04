@@ -3,7 +3,7 @@
 
 ![Structure](structure.png)
 
-![ER diagram](er.png)
+![ER diagram](ER.png)
 
 <h2>Definition of Done:</h2>
 
