@@ -1,21 +1,30 @@
 """Book Club Library API."""
 
-
-from fastapi import Body, FastAPI, HTTPException, status
-from models import BookCreate
-import database 
+import os
+import database
 import models
 import sqlite3
+import external_api
+from dotenv import load_dotenv
+from fastapi import Body, Depends, FastAPI, HTTPException, status, Header
+from models import BookCreate
 from datetime import datetime
 from models import MemberCreate, MemberUpdate, LoanCreate, LoanUpdate
 
 
 app = FastAPI(title="Book Club Library API")
 
-@app.get("/")
-def read_root():
-    """Health check endpoint."""
-    return {"message": "Book Club Library API"}
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
+
+
+def require_api_key(x_api_key: str | None = Header(default=None)):
+    """Reject requests that are missing or have a wrong X-API-Key header."""
+    if not API_KEY:
+        raise HTTPException(status_code=401, detail="Server API key not configured")
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
 
 @app.get("/authors", response_model=list[models.AuthorResponse])
 def get_all_authors():
@@ -23,51 +32,77 @@ def get_all_authors():
     authors = database.fetch_all_authors()
     return authors
 
-@app.post("/authors", status_code=201, response_model=models.AuthorResponse)
-def create_author(author:models.AuthorCreate):
+
+@app.post(
+    "/authors",
+    status_code=201,
+    response_model=models.AuthorResponse,
+    dependencies=[Depends(require_api_key)],
+)
+def create_author(author: models.AuthorCreate):
     """Create a new author."""
     # Pass the validated fields from your AuthorCreate model
     new_author = database.insert_author(
         name=author.name,
         open_library_key=author.open_library_key,
         birth_date=author.birth_date,
-        death_date=author.death_date
+        death_date=author.death_date,
     )
-    
+
     if not new_author:
         raise HTTPException(status_code=400, detail="Failed to create author")
-        
+
     return new_author
 
-@app.patch("/authors/{author_id}", response_model=models.AuthorResponse)
+
+@app.patch(
+    "/authors/{author_id}",
+    response_model=models.AuthorResponse,
+    dependencies=[Depends(require_api_key)],
+)
 def patch_author(author_id: int, author_update: models.AuthorUpdate):
     """Partially update an author (PATCH)."""
     # exclude_unset=True guarantees we only update fields the client actually provided
     update_data = author_update.model_dump(exclude_unset=True)
-    
+
     if not update_data:
-        raise HTTPException(status_code=400, detail="No valid fields provided for update")
-    try:    
+        raise HTTPException(
+            status_code=400, detail="No valid fields provided for update"
+        )
+    try:
         updated_author = database.update_author(author_id, update_data)
     except sqlite3.IntegrityError:
-        raise HTTPException(status_code=409, detail="Database constraint failed: Author data already exists")
+        raise HTTPException(
+            status_code=409,
+            detail="Database constraint failed: Author data already exists",
+        )
     if updated_author is None:
-        raise HTTPException(status_code=404, detail="Author not found or constraint failed")
-        
+        raise HTTPException(
+            status_code=404, detail="Author not found or constraint failed"
+        )
+
     return updated_author
 
-@app.put("/authors/{author_id}", response_model=models.AuthorResponse)
+
+@app.put(
+    "/authors/{author_id}",
+    response_model=models.AuthorResponse,
+    dependencies=[Depends(require_api_key)],
+)
 def put_author(author_id: int, author_update: models.AuthorCreate):
     """Fully replace an author (PUT)."""
     # Exclude unset is omitted to enforce a complete overwrite of all fields
     update_data = author_update.model_dump()
-    
+
     updated_author = database.update_author(author_id, update_data)
-    
+
     if updated_author is None:
-        raise HTTPException(status_code=404, detail="Author not found or constraint failed")
-        
+        raise HTTPException(
+            status_code=404, detail="Author not found or constraint failed"
+        )
+
     return updated_author
+
 
 # ---------- Member endpoints ----------
 
@@ -87,7 +122,7 @@ def get_one_member(member_id: int):
     return member
 
 
-@app.post("/members", status_code=201)
+@app.post("/members", status_code=201, dependencies=[Depends(require_api_key)])
 def create_member(member: MemberCreate):
     """Create a new member."""
     try:
@@ -96,7 +131,7 @@ def create_member(member: MemberCreate):
         raise HTTPException(status_code=409, detail="Email already exists")
 
 
-@app.patch("/members/{member_id}")
+@app.patch("/members/{member_id}", dependencies=[Depends(require_api_key)])
 def update_member(member_id: int, member: MemberUpdate):
     """Partially update a member. Only provided fields are changed."""
     updates = member.model_dump(exclude_unset=True)
@@ -156,7 +191,7 @@ def get_one_loan(loan_id: int):
     return loan
 
 
-@app.post("/loans", status_code=201)
+@app.post("/loans", status_code=201, dependencies=[Depends(require_api_key)])
 def create_loan(loan: LoanCreate):
     """Create a new loan. Fails if the book is already on an active loan."""
     if database.has_active_loan_for_book(loan.book_id):
@@ -173,7 +208,7 @@ def create_loan(loan: LoanCreate):
         raise HTTPException(status_code=400, detail="Invalid book_id or member_id")
 
 
-@app.patch("/loans/{loan_id}")
+@app.patch("/loans/{loan_id}", dependencies=[Depends(require_api_key)])
 def update_loan(loan_id: int, loan: LoanUpdate):
     """Partially update a loan. Use to extend due_date or set return_date."""
     updates = loan.model_dump(exclude_unset=True)
@@ -194,42 +229,53 @@ def update_loan(loan_id: int, loan: LoanUpdate):
 
     return updated
 
-@app.post("/loans/{loan_id}/return")
-def return_book(loan_id: int): 
+
+@app.post("/loans/{loan_id}/return", dependencies=[Depends(require_api_key)])
+def return_book(loan_id: int):
     """Marks a book as returned, unless it already is returned."""
     loan = database.fetch_loan(loan_id)
 
-    #Not found.
+    # Not found.
     if loan is None:
-        raise HTTPException(status_code=404, detail="Can't return a loan that does not exist.")
-    
-    #Conflict.
-    if loan["return_date"] is not None:    
-        raise HTTPException(status_code=409, detail="Can't return a book that has already been returned.")
+        raise HTTPException(
+            status_code=404, detail="Can't return a loan that does not exist."
+        )
+
+    # Conflict.
+    if loan["return_date"] is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Can't return a book that has already been returned.",
+        )
 
     returned_loan = database.return_loan(loan_id)
     return returned_loan
 
+
 # ---------- Book endpoint talking with external API ----------
-import external_api
+
 
 @app.get("/get/search")
 def search_open_library(isbn: str):
-    search_result = external_api.search_books(isbn) 
+    search_result = external_api.search_books(isbn)
     return search_result
+
 
 # ---------- Book endpoints ----------
 
 
 def find_book(book_id: int):
-    """ Finds a book by id. """
-    
+    """Finds a book by id."""
+
     book = database.get_book_by_id(book_id)
 
     if not book:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
 
     return book
+
 
 @app.get("/books")
 def get_books(author: str | None = None):
@@ -241,24 +287,35 @@ def get_books(author: str | None = None):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Author must be the name of the author!",
             )
-        
+
     books = database.get_books(author)
 
     if not books:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No books found!")
-    
+            status_code=status.HTTP_404_NOT_FOUND, detail="No books found!"
+        )
+
     return books
 
-@app.get("/books/{book_id}")
+
+@app.get("/books/{book_id}", response_model=models.BookResponse)
 def get_book(book_id: int):
     """Endpoint for reading a book by id"""
 
     return find_book(book_id)
 
-@app.post("/books", status_code=status.HTTP_201_CREATED)
-def create_book(book: BookCreate, author_ids: list[int]= Body(..., description="List of author IDs to link to this book")):
+
+@app.post(
+    "/books",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_api_key)],
+)
+def create_book(
+    book: BookCreate,
+    author_ids: list[int] = Body(
+        ..., description="List of author IDs to link to this book"
+    ),
+):
     """Endpoint for adding a new book to the Library."""
 
     if not book.title.strip():
@@ -280,8 +337,8 @@ def create_book(book: BookCreate, author_ids: list[int]= Body(..., description="
     except sqlite3.IntegrityError:
         # Triggers if the book ISBN already exists, or if an author_id doesn't exist
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Database constraint failed: Book already exists or author ID is invalid."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Database constraint failed: Book already exists or author ID is invalid.",
         )
     except Exception:
         raise HTTPException(
@@ -292,30 +349,45 @@ def create_book(book: BookCreate, author_ids: list[int]= Body(..., description="
     if not created_book:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve created book."
+            detail="Failed to retrieve created book.",
         )
 
     return created_book
 
-@app.patch("/books/{book_id}", response_model=models.BookResponse)
+
+@app.patch(
+    "/books/{book_id}",
+    response_model=models.BookResponse,
+    dependencies=[Depends(require_api_key)],
+)
 def patch_book(book_id: int, book_update: models.BookUpdate):
     """Partially update a book (PATCH)."""
     # exclude_unset=True guarantees we only update fields the client actually provided
     update_data = book_update.model_dump(exclude_unset=True)
 
     if not update_data:
-        raise HTTPException(status_code=400, detail="No valid fields provided for update")
+        raise HTTPException(
+            status_code=400, detail="No valid fields provided for update"
+        )
     try:
         updated_book = database.update_book(book_id, update_data)
     except sqlite3.IntegrityError:
-        raise HTTPException(status_code=409, detail="Database constraint failed: Book data already exists")
+        raise HTTPException(
+            status_code=409,
+            detail="Database constraint failed: Book data already exists",
+        )
 
     if updated_book is None:
         raise HTTPException(status_code=404, detail="Book not found")
 
     return updated_book
 
-@app.delete("/books/{book_id}", response_model=models.BookResponse)
+
+@app.delete(
+    "/books/{book_id}",
+    response_model=models.BookResponse,
+    dependencies=[Depends(require_api_key)],
+)
 def delete_book(book_id: int):
     try:
         deleted = database.delete_book(book_id)
@@ -323,5 +395,5 @@ def delete_book(book_id: int):
             raise HTTPException(status_code=404, detail="Book not found")
     except sqlite3.Error:
         raise HTTPException(status_code=500, detail="Database execution failed")
-    
+
     return
