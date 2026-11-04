@@ -90,3 +90,13 @@ class LoanResponse(LoanBase):
 class LoanUpdate(BaseModel):
     due_date: date | None = None
     return_date: date | None = None
+
+class OpenLibraryBook(BaseModel):
+    title: str
+    key : str
+    first_publish_year: int | None = None
+    cover_id: int | None = None
+    isbn: list[str]
+    subject: str | None = None
+    author_name: list[str]
+    author_key: list[str]
