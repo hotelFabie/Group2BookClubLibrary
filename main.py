@@ -255,10 +255,19 @@ def return_book(loan_id: int):
 # ---------- Book endpoint talking with external API ----------
 
 
-@app.get("/get/search")
+@app.get("books/get/search")
 def search_open_library(isbn: str):
-    search_result = external_api.search_books(isbn)
-    return search_result
+    """Only does a search through the external API."""
+    try:
+        return external_api.search_books(isbn)
+
+    # Gateway timeout.
+    except external_api.OpenLibraryTimeoutError as exception:
+        raise HTTPException(status_code=504, detail=str(exception))
+
+    # Bad gateway.
+    except external_api.OpenLibraryError as exception:
+        raise HTTPException(status_code=502, detail=str(exception))
 
 
 # ---------- Book endpoints ----------

@@ -5,6 +5,14 @@ import requests
 
 OPEN_LIBRARY_URL = "https://openlibrary.org/search.json"
 
+class OpenLibraryError(Exception):
+    """There are many possible errors that can arise, so this one covers most that can happen."""
+    pass
+
+class OpenLibraryTimeoutError(Exception):
+    """Having a specific error for timeout, as it is more easily detected."""
+    pass
+
 def search_books(isbn : str) -> dict:
     """
     Searches for books on Open Library using an ISBN, 
@@ -16,22 +24,16 @@ def search_books(isbn : str) -> dict:
             OPEN_LIBRARY_URL,
             params = {
                 "isbn" : isbn,
-                "fields" : "title,key,isbn,cover_i,subject"
+                "fields" : "title,key,isbn,cover_i,subject,author_name,author_key"
             },
             timeout = 10
         )
         
         response.raise_for_status()
         return response.json()
-    
-    except requests.exceptions.Timeout:
-        print("Exception: Timeout on request to OpenLibrary.")
 
-    except requests.exceptions.ConnectionError:
-        print("Exception: Connection to OpenLibrary failed.")
+    except requests.exceptions.RequestException as exception:
+        raise OpenLibraryError("Exception: Data retrieval from from OpenLibrary failed.") from exception
 
-    except requests.exceptions.HTTPError as http_error:
-        print(f"Exception: HTTP error from OpenLibrary with the status code: {http_error.response.status_code}")
-
-    except requests.exceptions.RequestException as other_error:
-        print(f"Exception: Fetch from OpenLibrary resulted in {other_error}.")
+    except requests.exceptions.Timeout as exception:
+        raise OpenLibraryTimeoutError("Timeout on request to OpenLibrary.") from exception
