@@ -1,5 +1,5 @@
+import json
 import os
-import sys
 import requests
 from dotenv import load_dotenv
 
@@ -273,8 +273,69 @@ def members_menu():
     pass
 
 
+def list_all_loans():
+    try:
+        response = requests.get(f"{API_BASE_URL}/loans")
+        response.raise_for_status()
+    except requests.exceptions.ConnectionError:
+        print("Could not reach the API. Is the server running?")
+        return
+    except requests.exceptions.HTTPError as e:
+        print(f"API error: {e}")
+        return
+
+    loans = response.json()
+    print(json.dumps(loans, indent=2))
+
+
+def extend_loan():
+    loan_id = input("Loan id: ").strip()
+    new_due_date = input("New due date (YYYY-MM-DD): ").strip()
+    response = requests.patch(
+        f"{API_BASE_URL}/loans/{loan_id}",
+        json={"due_date": new_due_date},
+    )
+
+    if response.status_code == 404:
+        print("Loan not found.")
+        return
+
+    response.raise_for_status()
+    loan = response.json()
+    print(json.dumps(loan, indent=2))
+
+
 def loans_menu():
-    pass
+    while True:
+        print("\n--- Loans ---")
+        print("1. List all loans")
+        print("2. List loans for a member")
+        print("3. Extend a loan")
+        print("0. Back to main menu")
+
+        choice = input("Choose an option: ").strip()
+
+        if choice == "0":
+            return
+        elif choice == "1":
+            list_all_loans()
+        elif choice == "2":
+            list_member_loans()
+        elif choice == "3":
+            extend_loan()
+
+
+def list_member_loans():
+    member_id = input("Member id: ").strip()
+    response = requests.get(f"{API_BASE_URL}/members/{member_id}/loans")
+    response.raise_for_status()
+    loans = response.json()
+
+    if not loans:
+        print("No loans found for this member.")
+        return
+
+    print(json.dumps(loans, indent=2))
 
 
 def authors_menu():
@@ -286,18 +347,20 @@ def filter_by_author():
 
 
 def main():
-    """Show the menu and read one choice."""
-    print("\n--- Book Club Library ---")
-    print("1. Books")
-    print("2. Members")
-    print("3. Loans")
-    print("4. Authors")
-    print("0. Quit")
+    while True:
+        print("\n--- Book Club Library ---")
+        print("1. Books")
+        print("2. Members")
+        print("3. Loans")
+        print("4. Authors")
+        print("0. Quit")
 
-    choice = input("Choose an option: ").strip()
+        choice = input("Choose an option: ").strip()
 
-    if choice == "0":
-        return
+        if choice == "0":
+            break
+        elif choice == "3":
+            loans_menu()
 
 
 if __name__ == "__main__":

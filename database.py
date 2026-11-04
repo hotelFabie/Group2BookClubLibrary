@@ -450,4 +450,4 @@ def delete_book(book_id: int) -> bool:
         conn.commit()
         return cursor.rowcount > 0
     finally:
-            conn.close()    
+        conn.close()    
