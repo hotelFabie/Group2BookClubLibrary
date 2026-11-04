@@ -87,22 +87,25 @@ def find_books_by_id():
     except requests.exceptions.RequestException as e:
         print(f"Failed to find book: {e}")
 
+
 def find_books_by_author():
-    """Collect data and send a GET request to find books by author ID."""
-    author_id = input("Enter author ID: ").strip()
-    
-    if not author_id.isdigit():
-        print("Invalid input: Author ID must be a number.")
-        return
-
-    try:
-        response = requests.get(f"{API_BASE_URL}/books", params={"author": author_id}, timeout=5)
-        response.raise_for_status()
-        books = response.json()
-        print(f"Books found: {books}")
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to find books by author: {e}")
-
+   """Collect data and send a GET request to find books by author ID."""
+   author = input("Enter author, or leave blank for all books: ").strip()
+   if not author.isalpha() and author != "":
+       print("Please provide a valid author!")
+       return
+   try:
+       if not author:
+           response = requests.get(f"{API_BASE_URL}/books", timeout=5)
+       else:
+           response = requests.get(f"{API_BASE_URL}/books", params={"author": author}, timeout=5)
+       response.raise_for_status()
+       books = response.json()
+       print(f"Books found:")
+       for book in books:
+           print(f"ID: {book['id']}, Title: {book['title']}, Author/Authors: {book.get('author', [])}")
+   except requests.exceptions.RequestException as e:
+       print(f"Failed to find books by author: {e}") 
 
 def add_book_manual():
     """Collect data and send a POST request to create a book."""
