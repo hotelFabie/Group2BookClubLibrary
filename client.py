@@ -50,19 +50,127 @@ def members_menu():
 
 
 def list_all_members():
-    pass
+    try:
+        response = requests.get(f"{API_BASE_URL}/members")
+        response.raise_for_status()
+    except requests.exceptions.ConnectionError:
+        print("Could not reach the API. Is the server running?")
+        return
+    except requests.exceptions.HTTPError as e:
+        print(f"API error: {e}")
+        return
+
+    members = response.json()
+    print(json.dumps(members, indent=2))
 
 
 def get_one_member():
-    pass
+    member_id = input("Member id: ").strip()
+
+    try:
+        response = requests.get(f"{API_BASE_URL}/members/{member_id}")
+    except requests.exceptions.ConnectionError:
+        print("Could not reach the API. Is the server running?")
+        return
+
+    if response.status_code == 404:
+        print("Member not found.")
+        return
+
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print(f"API error: {e}")
+        return
+
+    member = response.json()
+    print(json.dumps(member, indent=2))
 
 
 def create_member():
-    pass
+    name = input("Name: ").strip()
+    email = input("Email: ").strip()
+    phone = input("Phone: ").strip()
+
+    payload = {"name": name, "email": email}
+    if phone:
+        payload["phone"] = phone
+
+    try:
+        response = requests.post(f"{API_BASE_URL}/members", json=payload)
+    except requests.exceptions.ConnectionError:
+        print("Could not reach the API. Is the server running?")
+        return
+
+    if response.status_code == 409:
+        print("A member with that email already exists.")
+        return
+
+    if response.status_code == 422:
+        print("Invalid data. Check that email is in a valid format.")
+        return
+
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print(f"API error: {e}")
+        return
+
+    member = response.json()
+    print("Member created:")
+    print(json.dumps(member, indent=2))
 
 
 def update_member():
-    pass
+    member_id = input("Member id: ").strip()
+
+    print("Leave a field blank to skip it.")
+    name = input("New name: ").strip()
+    email = input("New email: ").strip()
+    phone = input("New phone: ").strip()
+
+    payload = {}
+    if name:
+        payload["name"] = name
+    if email:
+        payload["email"] = email
+    if phone:
+        payload["phone"] = phone
+
+    if not payload:
+        print("Nothing to update.")
+        return
+
+    try:
+        response = requests.patch(
+            f"{API_BASE_URL}/members/{member_id}",
+            json=payload,
+        )
+    except requests.exceptions.ConnectionError:
+        print("Could not reach the API. Is the server running?")
+        return
+
+    if response.status_code == 404:
+        print("Member not found.")
+        return
+
+    if response.status_code == 409:
+        print("A member with that email already exists.")
+        return
+
+    if response.status_code == 422:
+        print("Invalid data.")
+        return
+
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print(f"API error: {e}")
+        return
+
+    member = response.json()
+    print("Member updated:")
+    print(json.dumps(member, indent=2))
 
 
 def list_all_loans():
@@ -151,6 +259,8 @@ def main():
 
         if choice == "0":
             break
+        elif choice == "2":
+            members_menu()
         elif choice == "3":
             loans_menu()
 
