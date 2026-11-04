@@ -28,15 +28,16 @@ def books_menu():
         print("\n--- Books Menu ---")
         print("1. Find books by id")
         print("2. Find books by author")
-        print("3. Add a new book")
-        print("4. Update a book")
-        print("5. Delete a book")
+        print("3. Add a new book manually")
+        print("4. Add a new book from Open Library")
+        print("5. Update a book")
+        print("6. Delete a book")
         print("0. Back to Main Menu")
 
         choice = input("Choose an option: ").strip()
 
         if choice == "1":
-            find_books_id()
+            find_books_by_id()
         elif choice == "2":
             find_books_by_author()
         elif choice == "3":
@@ -52,7 +53,7 @@ def books_menu():
         else:
             print("Invalid choice, please try again.")
 
-def find_books_id():
+def find_books_by_id():
     """Collect data and send a GET request to find a book by ID."""
     book_id = input("Enter book ID: ").strip()
     
@@ -77,7 +78,7 @@ def find_books_by_author():
         return
 
     try:
-        response = requests.get(f"{API_BASE_URL}/books/author/{author_id}", timeout=5)
+        response = requests.get(f"{API_BASE_URL}/books", params={"author": author_id}, timeout=5)
         response.raise_for_status()
         books = response.json()
         print(f"Books found: {books}")
