@@ -142,7 +142,6 @@ def list_all_authors():
         authors = get_json(f"{API_BASE_URL}/authors", timeout=5)
         
         if not authors:
-            print("No authors found.")
             return
         
         print("\n--- List of Authors ---")
