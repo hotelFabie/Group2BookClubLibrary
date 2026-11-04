@@ -1,5 +1,6 @@
 from datetime import date
 from pydantic import BaseModel, EmailStr
+from typing import List, Dict, Any, Optional
 
 
 # Book Models
@@ -97,6 +98,6 @@ class OpenLibraryBook(BaseModel):
     first_publish_year: int | None = None
     cover_id: int | None = None
     isbn: list[str]
-    subject: str | None = None
-    author_name: list[str]
-    author_key: list[str]
+    subject: Optional[List[str]] = None
+    author_name: Optional[List[str]] = []
+    author_key: Optional[List[str]] = []

@@ -41,9 +41,277 @@ def get_json(url, params=None, headers=None, timeout=5):
 
 
 def books_menu():
-    pass
+    """Generate the books menu loop."""
+    while True:
+        print("\n--- Books Menu ---")
+        print("1. Find books by id")
+        print("2. Find books by author")
+        print("3. Add a new book manually")
+        print("4. Add a new book from Open Library")
+        print("5. Update a book")
+        print("6. Delete a book")
+        print("0. Back to Main Menu")
+
+        choice = input("Choose an option: ").strip()
+
+        if choice == "1":
+            find_books_by_id()
+        elif choice == "2":
+            find_books_by_author()
+        elif choice == "3":
+            add_book_manual()
+        elif choice == "4":
+            add_book_external()
+        elif choice == "5":
+            update_book()
+        elif choice == "6":
+            delete_book()
+        elif choice == "0":
+            break
+        else:
+            print("Invalid choice, please try again.")
+
+def find_books_by_id():
+    """Collect data and send a GET request to find a book by ID."""
+    book_id = input("Enter book ID: ").strip()
+    
+    if not book_id.isdigit():
+        print("Invalid input: Book ID must be a number.")
+        return
+
+    try:
+        response = requests.get(f"{API_BASE_URL}/books/{book_id}", timeout=5)
+        response.raise_for_status()
+        book = response.json()
+        print(f"Book found: {book}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to find book: {e}")
 
 
+def find_books_by_author():
+   """Collect data and send a GET request to find books by author ID."""
+   author = input("Enter author, or leave blank for all books: ").strip()
+   if not author.isalpha() and author != "":
+       print("Please provide a valid author!")
+       return
+   try:
+       if not author:
+           response = requests.get(f"{API_BASE_URL}/books", timeout=5)
+       else:
+           response = requests.get(f"{API_BASE_URL}/books", params={"author": author}, timeout=5)
+       response.raise_for_status()
+       books = response.json()
+       print(f"Books found:")
+       for book in books:
+           print(f"ID: {book['id']}, Title: {book['title']}, Author/Authors: {book.get('author', [])}")
+   except requests.exceptions.RequestException as e:
+       print(f"Failed to find books by author: {e}") 
+
+def add_book_manual():
+    """Collect data and send a POST request to create a book."""
+    title = input("Enter book title: ").strip()
+    
+    if not title:
+        print("Title is required.")
+        return
+        
+    author_names_str = input("Enter author names (comma-separated): ").strip()
+    if not author_names_str:
+        print("At least one author is required.")
+        return
+
+    author_names = [name.strip() for name in author_names_str.split(",") if name.strip()]
+    author_ids = []
+    
+    #  Finds or creates authors and collects their IDs
+    for name in author_names:
+        try:
+            # Send name to the Get-or-Create endpoint
+            author_data = {"name": name}
+            response = requests.post(f"{API_BASE_URL}/authors", json=author_data, timeout=5)
+            response.raise_for_status()
+            
+            # Extract the ID from the returned JSON
+            author = response.json()
+            author_ids.append(author["id"])
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to process author '{name}': {e}")
+            return # Abort the whole book creation if an author fails
+
+    payload = {
+        "book": {"title": title},
+        "author_ids": author_ids
+    }
+
+    try:
+        response = requests.post(f"{API_BASE_URL}/books", json=payload, timeout=5)
+        response.raise_for_status()
+        print("Book successfully created with author connections!")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to add book: {e}")
+
+def add_book_external():
+
+    """Ask for an ISBN, fetch from the backend, and display the result."""
+    isbn = input("Enter the ISBN to search Open Library: ").strip()
+    
+    if not isbn:
+        print("ISBN is required.")
+        return
+
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/get/search", 
+            params={"isbn": isbn}, 
+            timeout=10
+        )
+        
+        if response.status_code == 404:
+            print("Book not found on Open Library.")
+            return
+        elif response.status_code != 200:
+            print(f"Backend returned an error: {response.status_code}")
+            return
+            
+        book_data = response.json()
+
+        docs = book_data.get("docs", [])
+        if not docs:
+            print("No matching books found in the external data.")
+            return
+            
+        book = docs[0]
+        title = book.get("title", "Unknown Title")
+        authors = ", ".join(book.get("author_name", ["Unknown Author"]))
+        
+        print(f"\nFound: '{title}' by {authors}")
+        
+        confirm = input("\nWould you like to import this book into the library? (y/n): ").strip().lower()
+        
+        if confirm != 'y':
+            print("Import cancelled.")
+            return
+
+        try:
+            # Send the specific Open Library document dictionary to the database
+            import_response = requests.post(
+                f"{API_BASE_URL}/books/import", 
+                json=book, 
+                timeout=5
+            )
+            import_response.raise_for_status()
+            print("Book and authors successfully imported into the database!")
+            
+        except requests.exceptions.HTTPError as e:
+            print(f"Failed to import the book: {e}")
+            #print(f"Validation details: {e.response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Network error: {e}")
+
+def update_book():
+    book_title = input("Enter the title of the book to update: ").strip()
+    if not book_title:
+        print("Book title is required.")
+        return  
+    # Fetch all books and find the ID client-side
+    try:
+        response = requests.get(f"{API_BASE_URL}/books", timeout=5)
+        response.raise_for_status()
+        all_books = response.json()
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching books: {e}")
+        return
+    matches = [b for b in all_books if b["title"].lower() == book_title.lower()]
+    for book in matches:
+        print(f"Title: {book.get('title')} | ISBN: {book.get('isbn')}")
+    if not matches:
+        print("No book found with that title.")
+        return
+    if len(matches) == 1:
+        book_id = matches[0]["id"]
+        print(f"Found '{matches[0]['title']}'. (ID: {book_id})")
+    else:
+        print("Multiple matches found:")
+        for b in matches:
+            print(f"ID: {b['id']} | Title: {b['title']}")
+        book_id = input("Enter the ID you want to update: ").strip()
+
+    new_title = input("Insert New Title, or leave blank to keep current: ").strip()
+    new_publish_year = input("Insert New First Publish Year, or leave blank to keep current: ").strip()
+    new_open_library_key = input("Insert New Open Library Key, or leave blank to keep current: ").strip()
+    new_cover_id = input("Insert New Cover ID, or leave blank to keep current: ").strip()
+    new_isbn = input("Insert New ISBN, or leave blank to keep current: ").strip()
+    new_subject = input("Insert New Subject, or leave blank to keep current: ").strip()
+
+    update_data = {}
+    if new_title:
+        update_data["title"] = new_title
+
+    if new_publish_year:
+        update_data["first_publish_year"] = new_publish_year
+
+    if new_open_library_key:
+        update_data["open_library_key"] = new_open_library_key
+
+    if new_cover_id:
+        update_data["cover_id"] = new_cover_id
+
+    if new_isbn:
+        update_data["isbn"] = new_isbn
+
+    if new_subject:
+        update_data["subject"] = new_subject
+
+    if not update_data:
+        print("No changes provided.")
+        return
+
+    try:
+        patch_response = requests.patch(f"{API_BASE_URL}/books/{book_id}", json=update_data, timeout=5)
+        patch_response.raise_for_status()
+        print("Book updated successfully.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error updating book: {e}")
+    
+def delete_book():
+    book_title = input("Enter the title of the book to delete: ").strip()
+    if not book_title:
+        print("Book title is required.")
+        return  
+    # Fetch all books and find the ID client-side
+    try:
+        response = requests.get(f"{API_BASE_URL}/books", timeout=5)
+        response.raise_for_status()
+        all_books = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching books: {e}")
+        return
+    matches = [b for b in all_books if b["title"].lower() == book_title.lower()]
+    if not matches:
+        print("No book found with that title.")
+        return
+    if len(matches) == 1:
+        book_id = matches[0]["id"]
+        print(f"Found '{matches[0]['title']}'. (ID: {book_id})")
+    else:
+        print("Multiple matches found:")
+        for b in matches:
+            print(f"ID: {b['id']} | Title: {b['title']}")
+        book_id = input("Enter the exact ID you want to delete: ").strip()
+
+    confirm = input(f"Are you sure you want to delete the book with ID {book_id}? (y/n): ").strip().lower()
+    if confirm != 'y':
+        print("Deletion cancelled.")
+        return
+
+    try:
+        delete_response = requests.delete(f"{API_BASE_URL}/books/{book_id}", timeout=5)
+        delete_response.raise_for_status()
+        print("Book deleted successfully.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error deleting book: {e}")  
+    
 def members_menu():
     while True:
         print("\n--- Members ---")
