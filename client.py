@@ -192,15 +192,17 @@ def update_book():
     if not book_title:
         print("Book title is required.")
         return  
-    # 1. Fetch all books and find the ID client-side
+    # Fetch all books and find the ID client-side
     try:
         response = requests.get(f"{API_BASE_URL}/books", timeout=5)
         response.raise_for_status()
         all_books = response.json()
+        
     except requests.exceptions.RequestException as e:
         print(f"Error fetching books: {e}")
         return
     matches = [b for b in all_books if b["title"].lower() == book_title.lower()]
+    print(matches)
     if not matches:
         print("No book found with that title.")
         return
@@ -211,14 +213,33 @@ def update_book():
         print("Multiple matches found:")
         for b in matches:
             print(f"ID: {b['id']} | Title: {b['title']}")
-        book_id = input("Enter the exact ID you want to update: ").strip()
+        book_id = input("Enter the ID you want to update: ").strip()
 
-    print("\nEnter book id (leave blank to keep current):")
-    new_title = input("New title: ").strip()
-    
+    new_title = input("Insert New Title, or leave blank to keep current: ").strip()
+    new_publish_year = input("Insert New First Publish Year, or leave blank to keep current: ").strip()
+    new_open_library_key = input("Insert New Open Library Key, or leave blank to keep current: ").strip()
+    new_cover_id = input("Insert New Cover ID, or leave blank to keep current: ").strip()
+    new_isbn = input("Insert New ISBN, or leave blank to keep current: ").strip()
+    new_subject = input("Insert New Subject, or leave blank to keep current: ").strip()
+
     update_data = {}
     if new_title:
         update_data["title"] = new_title
+
+    if new_publish_year:
+        update_data["first_publish_year"] = new_publish_year
+
+    if new_open_library_key:
+        update_data["open_library_key"] = new_open_library_key
+
+    if new_cover_id:
+        update_data["cover_id"] = new_cover_id
+
+    if new_isbn:
+        update_data["isbn"] = new_isbn
+
+    if new_subject:
+        update_data["subject"] = new_subject
 
     if not update_data:
         print("No changes provided.")
@@ -236,7 +257,7 @@ def delete_book():
     if not book_title:
         print("Book title is required.")
         return  
-    # 1. Fetch all books and find the ID client-side
+    # Fetch all books and find the ID client-side
     try:
         response = requests.get(f"{API_BASE_URL}/books", timeout=5)
         response.raise_for_status()
@@ -359,6 +380,8 @@ def main():
 
         if choice == "0":
             break
+        elif choice == "1":
+            books_menu()
         elif choice == "3":
             loans_menu()
 
