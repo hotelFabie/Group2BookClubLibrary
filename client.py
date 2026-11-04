@@ -146,7 +146,7 @@ def add_book_manual():
     try:
         response = requests.post(f"{API_BASE_URL}/books", json=payload, timeout=5)
         response.raise_for_status()
-        print("Book and authors linked successfully!")
+        print("Book successfully created with author connections!")
     except requests.exceptions.RequestException as e:
         print(f"Failed to add book: {e}")
 
@@ -161,7 +161,7 @@ def add_book_external():
 
     try:
         response = requests.get(
-            f"{API_BASE_URL}/books/get", 
+            f"{API_BASE_URL}/get/search", 
             params={"isbn": isbn}, 
             timeout=10
         )
@@ -174,7 +174,7 @@ def add_book_external():
             return
             
         book_data = response.json()
-        
+
         docs = book_data.get("docs", [])
         if not docs:
             print("No matching books found in the external data.")
@@ -202,11 +202,11 @@ def add_book_external():
             import_response.raise_for_status()
             print("Book and authors successfully imported into the database!")
             
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.HTTPError as e:
             print(f"Failed to import the book: {e}")
-
+            print(f"Validation details: {e.response.text}")
     except requests.exceptions.RequestException as e:
-        print(f"Could not connect to the local backend: {e}")
+        print(f"Network error: {e}")
 
 def update_book():
     book_title = input("Enter the title of the book to update: ").strip()
