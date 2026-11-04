@@ -221,7 +221,7 @@ def create_book(book_data: dict, author_ids: list[int]) -> dict | None:
 
         for author_id in author_ids:
             cursor.execute(
-                "INSERT INTO BookAuthor (book_id, author_id) VALUES (?, ?)",
+                "INSERT INTO book_authors (book_id, author_id) VALUES (?, ?)",
                 (book_id, author_id)
             )
 

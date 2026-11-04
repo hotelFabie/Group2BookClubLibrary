@@ -140,7 +140,7 @@ def add_book_external():
 
     try:
         response = requests.get(
-            f"{API_BASE_URL}/books/get/search", 
+            f"{API_BASE_URL}/books/get", 
             params={"isbn": isbn}, 
             timeout=10
         )
