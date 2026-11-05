@@ -11,11 +11,6 @@ API_BASE_URL = f"http://{API_HOST}:{API_PORT}"
 API_KEY = os.getenv("API_KEY")
 
 
-def auth_headers() -> dict:
-    """Return the X-API-Key header for write requests."""
-    return {"X-API-Key": API_KEY or ""}
-
-
 def check_api_is_up() -> bool:
     """Ping the API root. Return True if it answers, False if not."""
     try:
@@ -140,7 +135,12 @@ def add_book_manual():
     }
 
     try:
-        response = requests.post(f"{API_BASE_URL}/books", json=payload, timeout=5)
+        response = requests.post(f"{API_BASE_URL}/books", json=payload, headers=auth_headers(), timeout=5)
+        
+        if response.status_code == 401:
+            print("Missing or invalid API key.")
+            return
+            
         response.raise_for_status()
         print("Book successfully created with author connections!")
     except requests.exceptions.RequestException as e:
@@ -173,12 +173,16 @@ def add_book_external():
         return
 
     try:
-        import_response = requests.post(f"{API_BASE_URL}/books/import", json=book, timeout=5)
+        import_response = requests.post(f"{API_BASE_URL}/books/import", json=book, headers=auth_headers(), timeout=5)
+        
+        if import_response.status_code == 401:
+            print("Missing or invalid API key.")
+            return
+            
         import_response.raise_for_status()
         print("Book and authors successfully imported into the database!")
     except requests.exceptions.RequestException as e:
         print(f"Failed to import the book: {e}")
-
 
 def update_book():
     book_title = input("Enter the title of the book to update: ").strip()
@@ -355,17 +359,9 @@ def create_member():
         payload["phone"] = phone
 
     try:
-        response = requests.post(
-            f"{API_BASE_URL}/members",
-            json=payload,
-            headers=auth_headers(),
-        )
+        response = requests.post(f"{API_BASE_URL}/members", json=payload)
     except requests.exceptions.ConnectionError:
         print("Could not reach the API. Is the server running?")
-        return
-
-    if response.status_code == 401:
-        print("Missing or invalid API key.")
         return
 
     if response.status_code == 409:
@@ -411,14 +407,9 @@ def update_member():
         response = requests.patch(
             f"{API_BASE_URL}/members/{member_id}",
             json=payload,
-            headers=auth_headers(),
         )
     except requests.exceptions.ConnectionError:
         print("Could not reach the API. Is the server running?")
-        return
-
-    if response.status_code == 401:
-        print("Missing or invalid API key.")
         return
 
     if response.status_code == 404:
@@ -465,12 +456,7 @@ def extend_loan():
     response = requests.patch(
         f"{API_BASE_URL}/loans/{loan_id}",
         json={"due_date": new_due_date},
-        headers=auth_headers(),
     )
-
-    if response.status_code == 401:
-        print("Missing or invalid API key.")
-        return
 
     if response.status_code == 404:
         print("Loan not found.")
@@ -575,15 +561,7 @@ def add_new_author():
     }
 
     try:
-        response = requests.post(
-            f"{API_BASE_URL}/authors",
-            json=data,
-            headers=auth_headers(),
-            timeout=5,
-        )
-        if response.status_code == 401:
-            print("Missing or invalid API key.")
-            return
+        response = requests.post(f"{API_BASE_URL}/authors", json=data, timeout=5)
         response.raise_for_status()
         print("Author added successfully.")
     except requests.exceptions.RequestException as e:
@@ -619,14 +597,8 @@ def update_existing_author():
 
     try:
         response = requests.patch(
-            f"{API_BASE_URL}/authors/{author_id}",
-            json=data,
-            headers=auth_headers(),
-            timeout=5,
+            f"{API_BASE_URL}/authors/{author_id}", json=data, timeout=5
         )
-        if response.status_code == 401:
-            print("Missing or invalid API key.")
-            return
         response.raise_for_status()
         print("Author updated successfully.")
     except requests.exceptions.RequestException as e:
