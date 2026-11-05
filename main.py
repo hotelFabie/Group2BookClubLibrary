@@ -440,7 +440,6 @@ def patch_book(book_id: int, book_update: models.BookUpdate):
 
 @app.delete(
     "/books/{book_id}",
-    response_model=models.BookResponse,
     dependencies=[Depends(require_api_key)],
 )
 def delete_book(book_id: int):
@@ -451,4 +450,4 @@ def delete_book(book_id: int):
     except sqlite3.Error:
         raise HTTPException(status_code=500, detail="Database execution failed")
 
-    return deleted
+    return {"Book deleted successfully"}

@@ -413,6 +413,8 @@ def update_member():
             f"{API_BASE_URL}/members/{member_id}",
             json=payload,
             headers=auth_headers()
+        )
+
     except requests.exceptions.ConnectionError:
         print("Could not reach the API. Is the server running?")
         return
