@@ -1,6 +1,6 @@
 from datetime import date
 from pydantic import BaseModel, EmailStr
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 
 
 # Book Models
@@ -19,6 +19,7 @@ class BookCreate(BookBase):
 
 class BookResponse(BookBase):
     id: int
+    author: str | None = None
 
 class BookUpdate(BaseModel):
     title: str | None = None

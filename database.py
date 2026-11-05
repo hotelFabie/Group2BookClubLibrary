@@ -1,9 +1,6 @@
 import datetime
 from pathlib import Path
 import sqlite3
-from typing import Any
-
-from models import BookCreate
 
 class AuthorNotFoundError(Exception):
     """Raised when the given author does not exist."""
@@ -45,12 +42,13 @@ def get_book_by_id(book_id : int) -> dict | None:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-
-        cursor.execute("SELECT b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
-                        " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
-                        + "FROM books b JOIN book_authors ba ON ba.book_id "+
-                        "= b.id JOIN authors a ON a.id = ba.author_id WHERE b.id = ? "
-                        "GROUP BY b.id", (book_id,),)
+        cursor.execute(
+            "SELECT b.id, b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
+            " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author " \
+            "FROM books b LEFT JOIN book_authors ba ON ba.book_id = b.id " \
+            "LEFT JOIN authors a ON a.id = ba.author_id WHERE b.id = ? " \
+            "GROUP BY b.id", (book_id,)
+        )
         row = cursor.fetchone()
         return dict(row) if row else None
     finally:
