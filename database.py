@@ -185,7 +185,7 @@ def get_books(author : str | None = None):
 
         if author:
             cursor.execute(
-                "SELECT b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
+                "SELECT b.id, b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
                         " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
                         + "FROM books b JOIN book_authors ba ON ba.book_id "+
                         "= b.id JOIN authors a ON a.id = ba.author_id WHERE a.name LIKE ? "
@@ -194,7 +194,7 @@ def get_books(author : str | None = None):
             )
 
         else:
-            cursor.execute("SELECT b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
+            cursor.execute("SELECT b.id, b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
                         " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
                         + "FROM books b JOIN book_authors ba ON ba.book_id "+
                         "= b.id JOIN authors a ON a.id = ba.author_id GROUP BY b.id")
@@ -221,7 +221,7 @@ def create_book(book_data: dict, author_ids: list[int]) -> dict | None:
 
         for author_id in author_ids:
             cursor.execute(
-                "INSERT INTO BookAuthor (book_id, author_id) VALUES (?, ?)",
+                "INSERT INTO book_authors (book_id, author_id) VALUES (?, ?)",
                 (book_id, author_id)
             )
 
@@ -443,6 +443,13 @@ def delete_book(book_id: int) -> bool:
     """Deletes a book by id. Returns True if deleted, False if not found."""
     conn = get_connection()
     try:
+        #Delete BookAuthors rows first
+        conn.execute(
+            "DELETE FROM book_authors WHERE book_id = ?",
+            (book_id,)
+        )
+        #Delete any loans associated with the book
+        conn.execute("DELETE FROM loans WHERE book_id = ?", (book_id,))
         cursor = conn.execute(
             "DELETE FROM books WHERE id = ?",
             (book_id,),

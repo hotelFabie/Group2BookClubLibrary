@@ -1,16 +1,16 @@
 """Book Club Library API."""
 
 import os
-import database
-import models
 import sqlite3
-import external_api
-from dotenv import load_dotenv
-from fastapi import Body, Depends, FastAPI, HTTPException, status, Header
-from models import BookCreate
 from datetime import datetime
-from models import MemberCreate, MemberUpdate, LoanCreate, LoanUpdate
 
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, status
+from dotenv import load_dotenv
+
+import database
+import external_api
+import models
+from models import BookCreate, LoanCreate, LoanUpdate, MemberCreate, MemberUpdate
 
 app = FastAPI(title="Book Club Library API")
 
@@ -255,7 +255,7 @@ def return_book(loan_id: int):
 # ---------- Book endpoint talking with external API ----------
 
 
-@app.get("books/get/search")
+@app.get("/get/search")
 def search_open_library(isbn: str):
     """Only does a search through the external API."""
     try:
@@ -268,6 +268,54 @@ def search_open_library(isbn: str):
     # Bad gateway.
     except external_api.OpenLibraryError as exception:
         raise HTTPException(status_code=502, detail=str(exception))
+
+
+@app.post("/books/import", status_code=status.HTTP_201_CREATED)
+def import_external_book(external_data: models.OpenLibraryBook):
+    """Processes raw JSON from Open Library and saves it to the database."""
+    data = external_data.model_dump()
+    author_ids = []
+
+    names = data.get("author_name", [])
+    keys = data.get("author_key", [])
+
+    for i in range(len(names)):
+        name = names[i]
+        raw_key = keys[i] if i < len(keys) else f"UnknownKey_{i}"
+
+        author_record = database.insert_author(
+            name=name, open_library_key=raw_key, birth_date=None, death_date=None
+        )
+        if author_record:
+            author_ids.append(author_record["id"])
+
+    if not author_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not resolve any authors from external payload.",
+        )
+
+    # Extract book details and map them to your internal schema
+
+    raw_isbns = data.get("isbn_13")
+    isbn_val = raw_isbns[0] if raw_isbns else None
+    raw_subjects = data.get("subject")
+    subject_val = ", ".join(raw_subjects) if raw_subjects else ""
+    book_data = {
+        "title": data.get("title"),
+        "isbn": isbn_val,
+        "subject": subject_val,
+        "first_publish_year": data.get("first_publish_year"),
+        "open_library_key": data.get("key"),
+        "cover_id": data.get("cover_id"),
+    }
+
+    created_book = database.create_book(book_data, author_ids)
+
+    if not created_book:
+        raise HTTPException(status_code=500, detail="Database insertion failed.")
+
+    return created_book
 
 
 # ---------- Book endpoints ----------
@@ -405,4 +453,4 @@ def delete_book(book_id: int):
     except sqlite3.Error:
         raise HTTPException(status_code=500, detail="Database execution failed")
 
-    return
+    return deleted

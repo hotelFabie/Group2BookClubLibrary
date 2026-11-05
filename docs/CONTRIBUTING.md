@@ -1,9 +1,9 @@
 <h1>Contribution<h1>
 <h2>Structure</h2>
 
-![Structure](docs/structure.png)
+![Structure](structure.png)
 
-![ER diagram](docs/er.png)
+![ER diagram](ER.png)
 
 <h2>Definition of Done:</h2>
 
