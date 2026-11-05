@@ -7,6 +7,3 @@ As next week's focus will be on implementing the client - as an interactive part
 
 In short, we weren't fully ready how the project would scale, especially with the changes of roles in the group.
 We'll work within the scope that we have, and deal with the project for what it is; too small to logically break it up perfectly between 4 contributors.
-
-# Retrospective of Sprint 2
-Incoming...
