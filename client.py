@@ -103,7 +103,6 @@ def find_books_by_author():
             # Replaced [] with "Unknown" to match the string type from the database
             print(f"ID: {book['id']}, Title: {book['title']}, Author/Authors: {book.get('author', 'Unknown')}")
 
-
 def add_book_manual():
     """Collect data and send a POST request to create a book."""
     title = input("Enter book title: ").strip()
@@ -250,7 +249,7 @@ def update_book():
         return
 
     try:
-        patch_response = requests.patch(f"{API_BASE_URL}/books/{book_id}", json=update_data, timeout=5)
+        patch_response = requests.patch(f"{API_BASE_URL}/books/{book_id}", json=update_data, headers=auth_headers(), timeout=5)
         patch_response.raise_for_status()
         print("Book updated successfully.")
     except requests.exceptions.RequestException as e:
@@ -288,7 +287,7 @@ def delete_book():
         return
 
     try:
-        delete_response = requests.delete(f"{API_BASE_URL}/books/{book_id}", timeout=5)
+        delete_response = requests.delete(f"{API_BASE_URL}/books/{book_id}", headers=auth_headers(), timeout=5)
         delete_response.raise_for_status()
         print("Book deleted successfully.")
     except requests.exceptions.RequestException as e:
@@ -365,7 +364,7 @@ def create_member():
         payload["phone"] = phone
 
     try:
-        response = requests.post(f"{API_BASE_URL}/members", json=payload)
+        response = requests.post(f"{API_BASE_URL}/members", json=payload, headers=auth_headers())
     except requests.exceptions.ConnectionError:
         print("Could not reach the API. Is the server running?")
         return
@@ -413,7 +412,7 @@ def update_member():
         response = requests.patch(
             f"{API_BASE_URL}/members/{member_id}",
             json=payload,
-        )
+            headers=auth_headers()
     except requests.exceptions.ConnectionError:
         print("Could not reach the API. Is the server running?")
         return
