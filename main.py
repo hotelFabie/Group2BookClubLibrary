@@ -286,7 +286,7 @@ def import_external_book(external_data: models.OpenLibraryBook):
 
     for i in range(len(names)):
         name = names[i]
-        raw_key = keys[i] if i < len(keys) else f"UnknownKey_{i}"
+        raw_key = keys[i] if i < len(keys) else None
 
         author_record = database.insert_author(
             name=name, open_library_key=raw_key, birth_date=None, death_date=None
@@ -450,4 +450,4 @@ def delete_book(book_id: int):
     except sqlite3.Error:
         raise HTTPException(status_code=500, detail="Database execution failed")
 
-    return {"Book deleted successfully"}
+    return {"message": "Book deleted successfully"}
