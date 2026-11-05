@@ -10,6 +10,10 @@ API_PORT = os.getenv("API_PORT", "8000")
 API_BASE_URL = f"http://{API_HOST}:{API_PORT}"
 API_KEY = os.getenv("API_KEY")
 
+def auth_headers() -> dict:
+    """Return the X-API-Key header for write requests."""
+    return {"X-API-Key": API_KEY or ""}
+
 
 def check_api_is_up() -> bool:
     """Ping the API root. Return True if it answers, False if not."""
@@ -32,8 +36,7 @@ def get_json(url, params=None, headers=None, timeout=5):
     except requests.exceptions.ConnectionError:
         print("Could not connect to the server")
     except requests.exceptions.HTTPError as error:
-        detail = error.response.json().get("detail", error.response.status_code) if error.response.content else error.response.status_code
-        print(f"The server said no ({error.response.status_code}): {detail}")
+        print(f"The server said no: {error.response.status_code}")
     except requests.exceptions.JSONDecodeError:
         print("The answer was not JSON")
     except requests.exceptions.RequestException as error:

@@ -1,18 +1,14 @@
 """Book Club Library API."""
-
-from fastapi import Body, FastAPI, HTTPException, status
+import os
 import database 
 import models
 import sqlite3
 from datetime import datetime
-
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, status
 from dotenv import load_dotenv
-
-import database
 import external_api
-import models
-from models import BookCreate, LoanCreate, LoanUpdate, MemberCreate, MemberUpdate
+
+
 
 app = FastAPI(title="Book Club Library API")
 
