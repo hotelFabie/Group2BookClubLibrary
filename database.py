@@ -5,16 +5,21 @@ from typing import Any
 
 from models import BookCreate
 
+
 class AuthorNotFoundError(Exception):
     """Raised when the given author does not exist."""
+
+
 from datetime import date
 
 DB_PATH = Path(__file__).parent / "library.db"
+
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
 
 def fetch_all_authors() -> list[dict]:
     conn = get_connection()
@@ -27,6 +32,7 @@ def fetch_all_authors() -> list[dict]:
     finally:
         conn.close()
 
+
 def get_loans_by_member_id(member_id: int) -> list[dict]:
     "Finds all loans by member id."
     conn = get_connection()
@@ -38,23 +44,27 @@ def get_loans_by_member_id(member_id: int) -> list[dict]:
 
     return [dict(row) for row in rows]
 
-def get_book_by_id(book_id : int) -> dict | None:
+
+def get_book_by_id(book_id: int) -> dict | None:
     "Find book by id."
     conn = get_connection()
     try:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-
-        cursor.execute("SELECT b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
-                        " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
-                        + "FROM books b JOIN book_authors ba ON ba.book_id "+
-                        "= b.id JOIN authors a ON a.id = ba.author_id WHERE b.id = ? "
-                        "GROUP BY b.id", (book_id,),)
+        cursor.execute(
+            "SELECT b.id, b.title, b.first_publish_year, b.open_library_key, b.cover_id,"
+            " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
+            + "FROM books b JOIN book_authors ba ON ba.book_id "
+            + "= b.id JOIN authors a ON a.id = ba.author_id WHERE b.id = ? "
+            "GROUP BY b.id",
+            (book_id,),
+        )
         row = cursor.fetchone()
         return dict(row) if row else None
     finally:
         conn.close()
+
 
 def fetch_all_members() -> list[dict]:
     """Return all members as a list of dicts."""
@@ -68,61 +78,60 @@ def fetch_all_members() -> list[dict]:
     finally:
         conn.close()
 
+
 def insert_author(
-    name: str, 
-    open_library_key: str | None, 
-    birth_date: date | None, 
-    death_date: date | None
+    name: str,
+    open_library_key: str | None,
+    birth_date: date | None,
+    death_date: date | None,
 ) -> dict | None:
-     
+
     conn = get_connection()
     conn.row_factory = sqlite3.Row
-    
-        
+
     try:
         cursor = conn.cursor()
 
         if open_library_key is not None:
             cursor.execute(
-                "SELECT * FROM authors WHERE open_library_key = ?", 
-                (open_library_key,)
+                "SELECT * FROM authors WHERE open_library_key = ?", (open_library_key,)
             )
             existing = cursor.fetchone()
             if existing:
                 return dict(existing)
 
         cursor.execute(
-            "SELECT * FROM authors WHERE name = ? AND birth_date IS ?", 
-            (name, birth_date)
+            "SELECT * FROM authors WHERE name = ? AND birth_date IS ?",
+            (name, birth_date),
         )
         existing = cursor.fetchone()
-        
+
         if existing:
             return dict(existing)
-           
+
         cursor.execute(
             """
             INSERT INTO authors (name, open_library_key, birth_date, death_date) 
             VALUES (?, ?, ?, ?)
             """,
-            (name, open_library_key, birth_date, death_date)
-            )
+            (name, open_library_key, birth_date, death_date),
+        )
         conn.commit()
-            
-            # Fetch the newly generated record using the inserted ID
+
+        # Fetch the newly generated record using the inserted ID
         new_id = cursor.lastrowid
         cursor.execute("SELECT * FROM authors WHERE id = ?", (new_id,))
         row = cursor.fetchone()
-            
+
         if row:
             return dict(row)
         return None
-            
+
     except sqlite3.IntegrityError:
-            
         return None
     finally:
         conn.close()
+
 
 def update_author(author_id: int, update_data: dict) -> dict | None:
     """Updates the given fields on an author. Returns the updated row, or None."""
@@ -132,34 +141,34 @@ def update_author(author_id: int, update_data: dict) -> dict | None:
     # Build the dynamic SQL string (e.g., "name = ?, birth_date = ?")
     set_clauses = [f"{key} = ?" for key in update_data.keys()]
     set_clause_str = ", ".join(set_clauses)
-    
+
     # Append the author_id to the end of the values list for the WHERE clause
     values = list(update_data.values())
     values.append(author_id)
 
     conn = get_connection()
     conn.row_factory = sqlite3.Row
-    
+
     try:
         cursor = conn.cursor()
         cursor.execute(
-            f"UPDATE authors SET {set_clause_str} WHERE id = ?",
-            tuple(values)
+            f"UPDATE authors SET {set_clause_str} WHERE id = ?", tuple(values)
         )
-        
+
         # If no rows were changed, the ID doesn't exist
         if cursor.rowcount == 0:
             return None
-            
+
         conn.commit()
-        
+
         # Fetch and return the finalized record
         cursor.execute("SELECT * FROM authors WHERE id = ?", (author_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
-        
+
     finally:
         conn.close()
+
 
 def fetch_member(member_id: int) -> dict | None:
     """Return one member by id, or None if not found."""
@@ -174,7 +183,8 @@ def fetch_member(member_id: int) -> dict | None:
     finally:
         conn.close()
 
-def get_books(author : str | None = None):
+
+def get_books(author: str | None = None):
     "Gets all the books."
     conn = get_connection()
 
@@ -185,23 +195,26 @@ def get_books(author : str | None = None):
 
         if author:
             cursor.execute(
-                "SELECT b.id, b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
-                        " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
-                        + "FROM books b JOIN book_authors ba ON ba.book_id "+
-                        "= b.id JOIN authors a ON a.id = ba.author_id WHERE a.name LIKE ? "
-                        "GROUP BY b.id",
+                "SELECT b.id, b.title, b.first_publish_year, b.open_library_key, b.cover_id,"
+                " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
+                + "FROM books b JOIN book_authors ba ON ba.book_id "
+                + "= b.id JOIN authors a ON a.id = ba.author_id WHERE a.name LIKE ? "
+                "GROUP BY b.id",
                 (f"%{author}%",),
             )
 
         else:
-            cursor.execute("SELECT b.id, b.title, b.first_publish_year, b.open_library_key, b.cover_id," \
-                        " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
-                        + "FROM books b JOIN book_authors ba ON ba.book_id "+
-                        "= b.id JOIN authors a ON a.id = ba.author_id GROUP BY b.id")
-        
+            cursor.execute(
+                "SELECT b.id, b.title, b.first_publish_year, b.open_library_key, b.cover_id,"
+                " b.isbn, b.subject, GROUP_CONCAT(a.name, ', ') as author "
+                + "FROM books b JOIN book_authors ba ON ba.book_id "
+                + "= b.id JOIN authors a ON a.id = ba.author_id GROUP BY b.id"
+            )
+
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
+
 
 def create_book(book_data: dict, author_ids: list[int]) -> dict | None:
     "Adds a new book and links it to an existing author."
@@ -212,30 +225,37 @@ def create_book(book_data: dict, author_ids: list[int]) -> dict | None:
     try:
         cursor = conn.cursor()
         cursor.execute(
-        "INSERT INTO books (title, first_publish_year, open_library_key, "
-        "cover_id, isbn, subject) VALUES (?, ?, ?, ?, ?, ?)",
-        (book_data["title"], book_data["first_publish_year"], book_data["open_library_key"],
-        book_data["cover_id"], book_data["isbn"], book_data["subject"],)
-        )     
+            "INSERT INTO books (title, first_publish_year, open_library_key, "
+            "cover_id, isbn, subject) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                book_data["title"],
+                book_data["first_publish_year"],
+                book_data["open_library_key"],
+                book_data["cover_id"],
+                book_data["isbn"],
+                book_data["subject"],
+            ),
+        )
         book_id = cursor.lastrowid
 
         for author_id in author_ids:
             cursor.execute(
                 "INSERT INTO book_authors (book_id, author_id) VALUES (?, ?)",
-                (book_id, author_id)
+                (book_id, author_id),
             )
 
         conn.commit()
 
         cursor.execute("SELECT * FROM books WHERE id = ?", (book_id,))
         return dict(cursor.fetchone())
-    
+
     except sqlite3.Error as e:
-        conn.rollback() # Revert the book creation if junction inserts fail
+        conn.rollback()  # Revert the book creation if junction inserts fail
         print(f"Database error: {e}")
         return None
     finally:
         conn.close()
+
 
 def insert_member(name: str, email: str, phone: str | None) -> dict:
     """Insert a new member and return the created row as a dict.
@@ -375,6 +395,7 @@ def update_loan_fields(loan_id: int, updates: dict) -> dict | None:
     finally:
         conn.close()
 
+
 def return_loan(loan_id: int) -> dict | None:
     """Updates the return date to whatever the date is when attempting a return."""
     conn = get_connection()
@@ -384,24 +405,23 @@ def return_loan(loan_id: int) -> dict | None:
 
         cursor.execute(
             "UPDATE loans SET return_date = ? WHERE id = ?",
-            (datetime.date.today().isoformat(), loan_id)
+            (datetime.date.today().isoformat(), loan_id),
         )
         if cursor.rowcount == 0:
-            return None 
+            return None
 
         conn.commit()
 
-        #Return for external methods using this.
-        cursor.execute(
-            "SELECT * FROM loans WHERE id = ?", (loan_id,)
-        )
+        # Return for external methods using this.
+        cursor.execute("SELECT * FROM loans WHERE id = ?", (loan_id,))
 
         row = cursor.fetchone()
 
         return dict(row)
-    
+
     finally:
         conn.close()
+
 
 def update_book(book_id: int, update_data: dict) -> dict | None:
     """Updates the give fields on a book. Returns the updated row, or None."""
@@ -410,7 +430,7 @@ def update_book(book_id: int, update_data: dict) -> dict | None:
 
     set_clauses = [f"{key} = ?" for key in update_data.keys()]
     set_clause_str = ", ".join(set_clauses)
-    
+
     # Append the book_id to the end of the values list for the WHERE clause
     values = list(update_data.values())
     values.append(book_id)
@@ -420,35 +440,30 @@ def update_book(book_id: int, update_data: dict) -> dict | None:
 
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            f"UPDATE books SET {set_clause_str} WHERE id = ?",
-            tuple(values)
-        )
-                
+        cursor.execute(f"UPDATE books SET {set_clause_str} WHERE id = ?", tuple(values))
+
         # If no rows were changed, the ID doesn't exist
         if cursor.rowcount == 0:
             return None
-                    
+
         conn.commit()
-                
+
         # Fetch and return the finalized record
         cursor.execute("SELECT * FROM books WHERE id = ?", (book_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
-        
+
     finally:
         conn.close()
+
 
 def delete_book(book_id: int) -> bool:
     """Deletes a book by id. Returns True if deleted, False if not found."""
     conn = get_connection()
     try:
-        #Delete BookAuthors rows first
-        conn.execute(
-            "DELETE FROM book_authors WHERE book_id = ?",
-            (book_id,)
-        )
-        #Delete any loans associated with the book
+        # Delete BookAuthors rows first
+        conn.execute("DELETE FROM book_authors WHERE book_id = ?", (book_id,))
+        # Delete any loans associated with the book
         conn.execute("DELETE FROM loans WHERE book_id = ?", (book_id,))
         cursor = conn.execute(
             "DELETE FROM books WHERE id = ?",
@@ -457,4 +472,4 @@ def delete_book(book_id: int) -> bool:
         conn.commit()
         return cursor.rowcount > 0
     finally:
-        conn.close()    
+        conn.close()
