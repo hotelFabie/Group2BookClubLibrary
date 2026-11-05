@@ -1,12 +1,10 @@
 """Book Club Library API."""
 
 from fastapi import Body, FastAPI, HTTPException, status
-from models import BookCreate
 import database 
 import models
 import sqlite3
 from datetime import datetime
-from models import MemberCreate, MemberUpdate, LoanCreate, LoanUpdate
 import external_api
 
 
@@ -62,9 +60,16 @@ def put_author(author_id: int, author_update: models.AuthorCreate):
     """Fully replace an author (PUT)."""
     # Exclude unset is omitted to enforce a complete overwrite of all fields
     update_data = author_update.model_dump()
-    
-    updated_author = database.update_author(author_id, update_data)
-    
+    try:
+        updated_author = database.update_author(author_id, update_data)   
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409, 
+            detail="Database constraint failed: Author data already exists"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid data provided: {str(e)}")
+ 
     if updated_author is None:
         raise HTTPException(status_code=404, detail="Author not found or constraint failed")
         
@@ -73,13 +78,13 @@ def put_author(author_id: int, author_update: models.AuthorCreate):
 # ---------- Member endpoints ----------
 
 
-@app.get("/members")
+@app.get("/members", response_model=list[models.MemberResponse])
 def get_members():
     """Return all members."""
     return database.fetch_all_members()
 
 
-@app.get("/members/{member_id}")
+@app.get("/members/{member_id}", response_model=models.MemberResponse)
 def get_one_member(member_id: int):
     """Return one member by id."""
     member = database.fetch_member(member_id)
@@ -88,8 +93,8 @@ def get_one_member(member_id: int):
     return member
 
 
-@app.post("/members", status_code=201)
-def create_member(member: MemberCreate):
+@app.post("/members", status_code=201, response_model=models.MemberResponse)
+def create_member(member: models.MemberCreate):
     """Create a new member."""
     try:
         return database.insert_member(member.name, str(member.email), member.phone)
@@ -97,8 +102,8 @@ def create_member(member: MemberCreate):
         raise HTTPException(status_code=409, detail="Email already exists")
 
 
-@app.patch("/members/{member_id}")
-def update_member(member_id: int, member: MemberUpdate):
+@app.patch("/members/{member_id}", response_model=models.MemberResponse)
+def update_member(member_id: int, member: models.MemberUpdate):
     """Partially update a member. Only provided fields are changed."""
     updates = member.model_dump(exclude_unset=True)
     if not updates:
@@ -142,13 +147,13 @@ def get_member_loans(member_id: int):
 # ---------- Loan endpoints ----------
 
 
-@app.get("/loans")
+@app.get("/loans", response_model=list[models.LoanResponse])
 def get_loans():
     """Return all loans."""
     return database.fetch_all_loans()
 
 
-@app.get("/loans/{loan_id}")
+@app.get("/loans/{loan_id}", response_model=models.LoanResponse)
 def get_one_loan(loan_id: int):
     """Return one loan by id."""
     loan = database.fetch_loan(loan_id)
@@ -157,8 +162,8 @@ def get_one_loan(loan_id: int):
     return loan
 
 
-@app.post("/loans", status_code=201)
-def create_loan(loan: LoanCreate):
+@app.post("/loans", status_code=201, response_model=models.LoanResponse)
+def create_loan(loan: models.LoanCreate):
     """Create a new loan. Fails if the book is already on an active loan."""
     if database.has_active_loan_for_book(loan.book_id):
         raise HTTPException(status_code=409, detail="Book is already on loan")
@@ -174,8 +179,8 @@ def create_loan(loan: LoanCreate):
         raise HTTPException(status_code=400, detail="Invalid book_id or member_id")
 
 
-@app.patch("/loans/{loan_id}")
-def update_loan(loan_id: int, loan: LoanUpdate):
+@app.patch("/loans/{loan_id}", response_model=models.LoanResponse)
+def update_loan(loan_id: int, loan: models.LoanUpdate):
     """Partially update a loan. Use to extend due_date or set return_date."""
     updates = loan.model_dump(exclude_unset=True)
     if not updates:
@@ -195,7 +200,7 @@ def update_loan(loan_id: int, loan: LoanUpdate):
 
     return updated
 
-@app.post("/loans/{loan_id}/return")
+@app.post("/loans/{loan_id}/return", response_model=models.LoanResponse)
 def return_book(loan_id: int): 
     """Marks a book as returned, unless it already is returned."""
     loan = database.fetch_loan(loan_id)
@@ -218,7 +223,7 @@ def search_open_library(isbn: str):
     search_result = external_api.search_books(isbn) 
     return search_result
 
-@app.post("/books/import", status_code=status.HTTP_201_CREATED)
+@app.post("/books/import", response_model=models.BookResponse, status_code=status.HTTP_201_CREATED)
 def import_external_book(external_data: models.OpenLibraryBook):
     """Processes raw JSON from Open Library and saves it to the database."""
     data = external_data.model_dump()
@@ -245,7 +250,7 @@ def import_external_book(external_data: models.OpenLibraryBook):
 
     # Extract book details and map them to your internal schema
 
-    raw_isbns = data.get("isbn_13")
+    raw_isbns = data.get("isbn")
     isbn_val = raw_isbns[0] if raw_isbns else None
     raw_subjects = data.get("subject")
     subject_val = ", ".join(raw_subjects) if raw_subjects else ""
@@ -257,9 +262,13 @@ def import_external_book(external_data: models.OpenLibraryBook):
         "open_library_key": data.get("key"),
         "cover_id": data.get("cover_id")
     }
-    
-    created_book = database.create_book(book_data, author_ids)
-    
+    try:
+        created_book = database.create_book(book_data, author_ids)
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, 
+            detail="Database constraint failed: This book already exists in the library."
+        )   
     if not created_book:
         raise HTTPException(status_code=500, detail="Database insertion failed.")
         
@@ -278,7 +287,7 @@ def find_book(book_id: int):
 
     return book
 
-@app.get("/books")
+@app.get("/books", response_model=list[models.BookResponse])
 def get_books(author: str | None = None):
     """Endpoint for reading all the books in the Library. Query parameter: 'author'"""
     if author is not None:
@@ -298,15 +307,15 @@ def get_books(author: str | None = None):
     
     return books
 
-@app.get("/books/{book_id}")
+@app.get("/books/{book_id}", response_model=models.BookResponse)
 def get_book(book_id: int):
     """Endpoint for reading a book by id"""
 
     return find_book(book_id)
 
 
-@app.post("/books", status_code=status.HTTP_201_CREATED)
-def create_book(book: BookCreate, author_ids: list[int]= Body(..., description="List of author IDs to link to this book")):
+@app.post("/books", response_model=models.BookResponse, status_code=status.HTTP_201_CREATED)
+def create_book(book: models.BookCreate, author_ids: list[int]= Body(..., description="List of author IDs to link to this book")):
     """Endpoint for adding a new book to the Library."""
 
     if not book.title.strip():

@@ -32,11 +32,12 @@ def get_json(url, params=None, headers=None, timeout=5):
     except requests.exceptions.ConnectionError:
         print("Could not connect to the server")
     except requests.exceptions.HTTPError as error:
-        print(f"The server said no: {error.response.status_code}")
+        detail = error.response.json().get("detail", error.response.status_code) if error.response.content else error.response.status_code
+        print(f"The server said no ({error.response.status_code}): {detail}")
     except requests.exceptions.JSONDecodeError:
         print("The answer was not JSON")
     except requests.exceptions.RequestException as error:
-        print(f"Someting else went wrong: {type(error).__name__}")
+        print(f"Something else went wrong: {type(error).__name__}")
     return None
 
 
@@ -74,38 +75,28 @@ def books_menu():
 def find_books_by_id():
     """Collect data and send a GET request to find a book by ID."""
     book_id = input("Enter book ID: ").strip()
-    
     if not book_id.isdigit():
         print("Invalid input: Book ID must be a number.")
         return
 
-    try:
-        response = requests.get(f"{API_BASE_URL}/books/{book_id}", timeout=5)
-        response.raise_for_status()
-        book = response.json()
+    book = get_json(f"{API_BASE_URL}/books/{book_id}")
+    if book:
         print(f"Book found: {book}")
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to find book: {e}")
 
 
 def find_books_by_author():
-   """Collect data and send a GET request to find books by author ID."""
-   author = input("Enter author, or leave blank for all books: ").strip()
-   if not author.isalpha() and author != "":
-       print("Please provide a valid author!")
-       return
-   try:
-       if not author:
-           response = requests.get(f"{API_BASE_URL}/books", timeout=5)
-       else:
-           response = requests.get(f"{API_BASE_URL}/books", params={"author": author}, timeout=5)
-       response.raise_for_status()
-       books = response.json()
-       print(f"Books found:")
-       for book in books:
-           print(f"ID: {book['id']}, Title: {book['title']}, Author/Authors: {book.get('author', [])}")
-   except requests.exceptions.RequestException as e:
-       print(f"Failed to find books by author: {e}") 
+    """Collect data and send a GET request to find books by author."""
+    author = input("Enter author, or leave blank for all books: ").strip()
+    if author and not author[0].isalpha():
+        print("Please provide a valid author!")
+        return
+
+    params = {"author": author} if author else None
+    books = get_json(f"{API_BASE_URL}/books", params=params)
+    if books:
+        print("Books found:")
+        for book in books:
+            print(f"ID: {book['id']}, Title: {book['title']}, Author/Authors: {book.get('author', [])}")
 
 def add_book_manual():
     """Collect data and send a POST request to create a book."""
@@ -151,62 +142,38 @@ def add_book_manual():
         print(f"Failed to add book: {e}")
 
 def add_book_external():
-
     """Ask for an ISBN, fetch from the backend, and display the result."""
     isbn = input("Enter the ISBN to search Open Library: ").strip()
-    
     if not isbn:
         print("ISBN is required.")
         return
 
+    book_data = get_json(f"{API_BASE_URL}/get/search", params={"isbn": isbn}, timeout=10)
+    if not book_data:
+        return
+
+    docs = book_data.get("docs", [])
+    if not docs:
+        print("No matching books found in the external data.")
+        return
+
+    book = docs[0]
+    title = book.get("title", "Unknown Title")
+    authors = ", ".join(book.get("author_name", ["Unknown Author"]))
+    print(f"\nFound: '{title}' by {authors}")
+
+    confirm = input("\nWould you like to import this book into the library? (y/n): ").strip().lower()
+    if confirm != "y":
+        print("Import cancelled.")
+        return
+
     try:
-        response = requests.get(
-            f"{API_BASE_URL}/get/search", 
-            params={"isbn": isbn}, 
-            timeout=10
-        )
-        
-        if response.status_code == 404:
-            print("Book not found on Open Library.")
-            return
-        elif response.status_code != 200:
-            print(f"Backend returned an error: {response.status_code}")
-            return
-            
-        book_data = response.json()
-
-        docs = book_data.get("docs", [])
-        if not docs:
-            print("No matching books found in the external data.")
-            return
-            
-        book = docs[0]
-        title = book.get("title", "Unknown Title")
-        authors = ", ".join(book.get("author_name", ["Unknown Author"]))
-        
-        print(f"\nFound: '{title}' by {authors}")
-        
-        confirm = input("\nWould you like to import this book into the library? (y/n): ").strip().lower()
-        
-        if confirm != 'y':
-            print("Import cancelled.")
-            return
-
-        try:
-            # Send the specific Open Library document dictionary to the database
-            import_response = requests.post(
-                f"{API_BASE_URL}/books/import", 
-                json=book, 
-                timeout=5
-            )
-            import_response.raise_for_status()
-            print("Book and authors successfully imported into the database!")
-            
-        except requests.exceptions.HTTPError as e:
-            print(f"Failed to import the book: {e}")
-            #print(f"Validation details: {e.response.text}")
+        import_response = requests.post(f"{API_BASE_URL}/books/import", json=book, timeout=5)
+        import_response.raise_for_status()
+        print("Book and authors successfully imported into the database!")
     except requests.exceptions.RequestException as e:
-        print(f"Network error: {e}")
+        print(f"Failed to import the book: {e}")
+
 
 def update_book():
     book_title = input("Enter the title of the book to update: ").strip()
@@ -547,8 +514,7 @@ def authors_menu():
             add_new_author()
         elif user_choice == "3":
             update_existing_author()
-        elif user_choice == "0":
-            return
+
 
 
 def list_all_authors():
