@@ -122,7 +122,7 @@ def add_book_manual():
         try:
             # Send name to the Get-or-Create endpoint
             author_data = {"name": name}
-            response = requests.post(f"{API_BASE_URL}/authors", json=author_data, timeout=5)
+            response = requests.post(f"{API_BASE_URL}/authors", json=author_data, headers=auth_headers(), timeout=5)
             response.raise_for_status()
             
             # Extract the ID from the returned JSON
