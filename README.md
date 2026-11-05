@@ -14,9 +14,10 @@ Sven, Murtaza, Anastasia & Fabian.
 ### Dependencies
 Data must be run SQLite. 
 
-Python version: 
+Python version: 3.14 or later (though anything from 3.10 and onwards should work).
 
-Packages:
+Required modules for successful execution are `fastapi`, `uvicorn`, `pydantic[email]`, `requests` and `python-dotenv`.
+(Also specified in `requirements.txt`).
 
 ### Execution
 To allow fetches to OpenLibrary, first start FastAPI through `uvicorn main:app --reload`, which normally will be started on `127.0.0.1:8000`.
