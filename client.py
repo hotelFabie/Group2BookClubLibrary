@@ -11,6 +11,11 @@ API_BASE_URL = f"http://{API_HOST}:{API_PORT}"
 API_KEY = os.getenv("API_KEY")
 
 
+def auth_headers() -> dict:
+    """Return the X-API-Key header for write requests."""
+    return {"X-API-Key": API_KEY or ""}
+
+
 def check_api_is_up() -> bool:
     """Ping the API root. Return True if it answers, False if not."""
     try:
@@ -350,9 +355,17 @@ def create_member():
         payload["phone"] = phone
 
     try:
-        response = requests.post(f"{API_BASE_URL}/members", json=payload)
+        response = requests.post(
+            f"{API_BASE_URL}/members",
+            json=payload,
+            headers=auth_headers(),
+        )
     except requests.exceptions.ConnectionError:
         print("Could not reach the API. Is the server running?")
+        return
+
+    if response.status_code == 401:
+        print("Missing or invalid API key.")
         return
 
     if response.status_code == 409:
@@ -398,9 +411,14 @@ def update_member():
         response = requests.patch(
             f"{API_BASE_URL}/members/{member_id}",
             json=payload,
+            headers=auth_headers(),
         )
     except requests.exceptions.ConnectionError:
         print("Could not reach the API. Is the server running?")
+        return
+
+    if response.status_code == 401:
+        print("Missing or invalid API key.")
         return
 
     if response.status_code == 404:
@@ -447,7 +465,12 @@ def extend_loan():
     response = requests.patch(
         f"{API_BASE_URL}/loans/{loan_id}",
         json={"due_date": new_due_date},
+        headers=auth_headers(),
     )
+
+    if response.status_code == 401:
+        print("Missing or invalid API key.")
+        return
 
     if response.status_code == 404:
         print("Loan not found.")
@@ -552,7 +575,15 @@ def add_new_author():
     }
 
     try:
-        response = requests.post(f"{API_BASE_URL}/authors", json=data, timeout=5)
+        response = requests.post(
+            f"{API_BASE_URL}/authors",
+            json=data,
+            headers=auth_headers(),
+            timeout=5,
+        )
+        if response.status_code == 401:
+            print("Missing or invalid API key.")
+            return
         response.raise_for_status()
         print("Author added successfully.")
     except requests.exceptions.RequestException as e:
@@ -588,8 +619,14 @@ def update_existing_author():
 
     try:
         response = requests.patch(
-            f"{API_BASE_URL}/authors/{author_id}", json=data, timeout=5
+            f"{API_BASE_URL}/authors/{author_id}",
+            json=data,
+            headers=auth_headers(),
+            timeout=5,
         )
+        if response.status_code == 401:
+            print("Missing or invalid API key.")
+            return
         response.raise_for_status()
         print("Author updated successfully.")
     except requests.exceptions.RequestException as e:
