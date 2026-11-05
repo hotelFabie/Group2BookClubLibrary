@@ -14,7 +14,7 @@ Sven, Murtaza, Anastasia & Fabian.
 ### Dependencies
 SQLite. 
 
-Python version: 3.14 or later (though anything from 3.10 and onwards should work).
+Python versions from 3.10 and later should work.
 
 Required packages - `fastapi`, `uvicorn`, `pydantic[email]`, `requests` and `python-dotenv` - exist in `requirements.txt`, and
 can be downloaded as `pip install -r requirements.txt`.
