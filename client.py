@@ -96,10 +96,13 @@ def find_books_by_author():
 
     params = {"author": author} if author else None
     books = get_json(f"{API_BASE_URL}/books", params=params)
+    
     if books:
         print("Books found:")
         for book in books:
-            print(f"ID: {book['id']}, Title: {book['title']}, Author/Authors: {book.get('author', [])}")
+            # Replaced [] with "Unknown" to match the string type from the database
+            print(f"ID: {book['id']}, Title: {book['title']}, Author/Authors: {book.get('author', 'Unknown')}")
+
 
 def add_book_manual():
     """Collect data and send a POST request to create a book."""
@@ -564,7 +567,7 @@ def add_new_author():
     }
 
     try:
-        response = requests.post(f"{API_BASE_URL}/authors", json=data, timeout=5)
+        response = requests.post(f"{API_BASE_URL}/authors", json=data, headers=auth_headers(), timeout=5)
         response.raise_for_status()
         print("Author added successfully.")
     except requests.exceptions.RequestException as e:

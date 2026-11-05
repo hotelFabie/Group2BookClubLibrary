@@ -19,6 +19,7 @@ class BookCreate(BookBase):
 
 class BookResponse(BookBase):
     id: int
+    author: str | None = None
 
 class BookUpdate(BaseModel):
     title: str | None = None
